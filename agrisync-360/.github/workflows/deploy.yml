@@ -1,0 +1,62 @@
+name: Deploy AgriSync 360
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run backend tests
+        working-directory: ./backend
+        run: pytest
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Run frontend tests
+        working-directory: ./frontend
+        run: npm test
+
+      - name: Deploy to DigitalOcean
+        if: success()
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DO_HOST }}
+          username: ${{ secrets.DO_USER }}
+          key: ${{ secrets.DO_SSH_KEY }}
+          script: |
+            cd /opt/agrisync360
+            git pull origin main
+            cd backend
+            source venv/bin/activate
+            flask db upgrade
+            sudo systemctl restart agrisync-gunicorn
+            sudo systemctl restart agrisync-celery
+            sudo systemctl restart agrisync-celerybeat
+            cd ../frontend
+            npm install
+            npm run build
+            sudo systemctl restart nginx

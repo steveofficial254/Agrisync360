@@ -1,8 +1,10 @@
 import logging
+import os
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import create_access_token, create_refresh_token, get_jwt, jwt_required
 from marshmallow import ValidationError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from app.extensions import db, limiter
 from app.models.user import User
@@ -18,112 +20,263 @@ def ok(data=None, message="Success", status=200):
     return jsonify({"success": True, "data": data or {}, "message": message}), status
 
 
-def err(error="error", message="Request failed", status=400):
-    return jsonify({"success": False, "error": error, "message": message}), status
+def err(error="error", message="Request failed", status=400, details=None):
+    body = {"success": False, "error": error, "message": message}
+    if details is not None:
+        body["details"] = details
+    return jsonify(body), status
 
 
+def _is_dev():
+    return os.getenv("FLASK_ENV", "development") == "development"
+
+
+# ---------------------------------------------------------------------------
+# TASK 1 — Register
+# ---------------------------------------------------------------------------
 @auth_bp.post("/register")
 @limiter.limit("5 per minute")
 def register():
     try:
         payload = RegisterSchema().load(request.get_json() or {})
-        phone = normalize_phone(payload["phone"])
+    except ValidationError as e:
+        return err(
+            "VALIDATION_ERROR",
+            "Invalid request data",
+            400,
+            details=e.messages,
+        )
+
+    phone = normalize_phone(payload["phone"])
+
+    # FIX 4 — wrap DB operations in try/except
+    try:
         if User.query.filter_by(phone=phone).first():
-            return err("conflict", "Phone already registered", 409)
-        user = User(phone=phone, role=payload.get("role", "farmer"))
+            return err("DUPLICATE_PHONE", "Phone number already registered", 409)
+
+        user = User(
+            phone=phone,
+            role=payload.get("role", "farmer"),
+            is_active=True,
+            is_verified=False,
+        )
         user.set_password(payload["password"])
         otp = user.generate_otp()
+
         db.session.add(user)
         db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return err("DUPLICATE_PHONE", "Phone number already registered", 409)
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        logger.error("DB error during register: %s", str(e))
+        return err("SERVER_ERROR", "Database error. Please try again.", 500)
+
+    # FIX 2 — SMS failure does NOT cause registration to fail
+    try:
         SMSService().send_otp(phone, otp)
-        return ok({"user_id": str(user.id)}, "OTP sent", 201)
-    except ValidationError as e:
-        message = "Invalid phone number format" if "phone" in str(e).lower() else str(e)
-        return err("validation_error", message, 400)
-    except Exception as e:
-        logger.exception("register failed")
-        return err("server_error", str(e), 500)
+    except Exception as sms_err:
+        logger.warning("SMS send failed (registration proceeds): %s", str(sms_err))
+
+    # FIX 3 — Response format
+    response_data = {
+        "user_id": str(user.id),
+        "phone": phone,
+    }
+    # FIX 2 — Return OTP in dev mode so testers don't need real SMS
+    if _is_dev():
+        response_data["otp"] = otp
+
+    return ok(response_data, "Registration successful. Check your phone for OTP.", 201)
 
 
+# ---------------------------------------------------------------------------
+# TASK 2 — Verify OTP
+# ---------------------------------------------------------------------------
 @auth_bp.post("/verify-otp")
 @limiter.limit("5 per minute")
 def verify_otp():
-    payload = OTPVerifySchema().load(request.get_json() or {})
-    user = User.query.filter_by(phone=normalize_phone(payload["phone"])).first()
-    if not user or not user.verify_otp(payload["otp_code"]):
-        return err("invalid_otp", "Invalid or expired OTP", 400)
-    user.is_verified = True
-    user.otp_code = None
-    user.otp_expires_at = None
-    db.session.commit()
+    try:
+        payload = OTPVerifySchema().load(request.get_json() or {})
+    except ValidationError as e:
+        return err("VALIDATION_ERROR", "Invalid request data", 400, details=e.messages)
+
+    phone = normalize_phone(payload["phone"])
+    user = User.query.filter_by(phone=phone).first()
+
+    if not user:
+        return err("USER_NOT_FOUND", "No account found with this phone number", 404)
+
+    if not user.verify_otp(payload["otp_code"]):
+        return err("INVALID_OTP", "OTP is invalid or has expired", 400)
+
+    try:
+        user.is_verified = True
+        user.otp_code = None
+        user.otp_expires_at = None
+        db.session.commit()
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        logger.error("DB error during verify-otp: %s", str(e))
+        return err("SERVER_ERROR", "Database error. Please try again.", 500)
+
     access = create_access_token(identity=str(user.id), additional_claims={"role": user.role})
     refresh = create_refresh_token(identity=str(user.id))
-    return ok({"access_token": access, "refresh_token": refresh, "user": user.to_dict()}, "OTP verified")
+
+    return ok(
+        {
+            "access_token": access,
+            "refresh_token": refresh,
+            "user": {
+                "id": str(user.id),
+                "phone": user.phone,
+                "role": user.role,
+                "is_verified": user.is_verified,
+            },
+        },
+        "Phone verified successfully",
+    )
 
 
+# ---------------------------------------------------------------------------
+# TASK 3 — Login
+# ---------------------------------------------------------------------------
 @auth_bp.post("/login")
 @limiter.limit("5 per minute")
 def login():
-    payload = LoginSchema().load(request.get_json() or {})
-    user = User.query.filter_by(phone=normalize_phone(payload["phone"])).first()
+    try:
+        payload = LoginSchema().load(request.get_json() or {})
+    except ValidationError as e:
+        return err("VALIDATION_ERROR", "Invalid request data", 400, details=e.messages)
+
+    phone = normalize_phone(payload["phone"])
+    user = User.query.filter_by(phone=phone).first()
+
     if not user or not user.check_password(payload["password"]):
-        return err("invalid_credentials", "Invalid phone or password", 401)
+        return err("INVALID_CREDENTIALS", "Invalid phone number or password", 401)
+
+    if not user.is_verified:
+        return err("ACCOUNT_NOT_VERIFIED", "Please verify your phone number before logging in", 403)
+
+    if not user.is_active:
+        return err("ACCOUNT_DISABLED", "Your account has been disabled. Contact support.", 403)
+
     access = create_access_token(identity=str(user.id), additional_claims={"role": user.role})
     refresh = create_refresh_token(identity=str(user.id))
-    return ok({"access_token": access, "refresh_token": refresh, "user": user.to_dict(), "role": user.role}, "Login successful")
+
+    return ok(
+        {
+            "access_token": access,
+            "refresh_token": refresh,
+            "user": {
+                "id": str(user.id),
+                "phone": user.phone,
+                "role": user.role,
+                "is_verified": user.is_verified,
+            },
+        },
+        "Login successful",
+    )
 
 
+# ---------------------------------------------------------------------------
+# Token refresh
+# ---------------------------------------------------------------------------
 @auth_bp.post("/refresh")
 @jwt_required(refresh=True)
 def refresh():
     from flask_jwt_extended import get_jwt_identity
-
     return ok({"access_token": create_access_token(identity=get_jwt_identity())}, "Token refreshed")
 
 
+# ---------------------------------------------------------------------------
+# Resend OTP
+# ---------------------------------------------------------------------------
 @auth_bp.post("/resend-otp")
 @limiter.limit("5 per minute")
 def resend_otp():
-    phone = normalize_phone((request.get_json() or {}).get("phone", ""))
-    user = User.query.filter_by(phone=phone).first()
-    if not user:
-        return err("not_found", "User not found", 404)
-    otp = user.generate_otp()
-    db.session.commit()
-    SMSService().send_otp(phone, otp)
-    return ok({}, "OTP resent")
+    try:
+        payload = request.get_json() or {}
+        phone = normalize_phone(payload.get("phone", ""))
+        user = User.query.filter_by(phone=phone).first()
+        if not user:
+            return err("USER_NOT_FOUND", "No account found with this phone number", 404)
+        otp = user.generate_otp()
+        db.session.commit()
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        logger.error("DB error on resend-otp: %s", str(e))
+        return err("SERVER_ERROR", "Database error. Please try again.", 500)
+
+    try:
+        SMSService().send_otp(phone, otp)
+    except Exception as sms_err:
+        logger.warning("SMS send failed on resend-otp: %s", str(sms_err))
+
+    response_data = {}
+    if _is_dev():
+        response_data["otp"] = otp
+
+    return ok(response_data, "OTP resent. Check your phone.")
 
 
+# ---------------------------------------------------------------------------
+# Logout
+# ---------------------------------------------------------------------------
 @auth_bp.post("/logout")
 @jwt_required()
 def logout():
     _ = get_jwt()
-    return ok({}, "Logged out")
+    return ok({}, "Logged out successfully")
 
 
+# ---------------------------------------------------------------------------
+# Forgot / Reset password
+# ---------------------------------------------------------------------------
 @auth_bp.post("/forgot-password")
 @limiter.limit("5 per minute")
 def forgot_password():
-    phone = normalize_phone((request.get_json() or {}).get("phone", ""))
-    user = User.query.filter_by(phone=phone).first()
-    if not user:
-        return err("not_found", "User not found", 404)
-    otp = user.generate_otp()
-    db.session.commit()
-    SMSService().send_otp(phone, otp)
-    return ok({}, "Password reset OTP sent")
+    try:
+        phone = normalize_phone((request.get_json() or {}).get("phone", ""))
+        user = User.query.filter_by(phone=phone).first()
+        if not user:
+            return err("USER_NOT_FOUND", "No account found with this phone number", 404)
+        otp = user.generate_otp()
+        db.session.commit()
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        logger.error("DB error on forgot-password: %s", str(e))
+        return err("SERVER_ERROR", "Database error. Please try again.", 500)
+
+    try:
+        SMSService().send_otp(phone, otp)
+    except Exception as sms_err:
+        logger.warning("SMS send failed on forgot-password: %s", str(sms_err))
+
+    response_data = {}
+    if _is_dev():
+        response_data["otp"] = otp
+
+    return ok(response_data, "Password reset OTP sent. Check your phone.")
 
 
 @auth_bp.post("/reset-password")
 @limiter.limit("5 per minute")
 def reset_password():
-    payload = request.get_json() or {}
-    phone = normalize_phone(payload.get("phone", ""))
-    user = User.query.filter_by(phone=phone).first()
-    if not user or not user.verify_otp(payload.get("otp_code", "")):
-        return err("invalid_otp", "Invalid or expired OTP", 400)
-    user.set_password(payload.get("password", ""))
-    user.otp_code = None
-    user.otp_expires_at = None
-    db.session.commit()
+    try:
+        payload = request.get_json() or {}
+        phone = normalize_phone(payload.get("phone", ""))
+        user = User.query.filter_by(phone=phone).first()
+        if not user or not user.verify_otp(payload.get("otp_code", "")):
+            return err("INVALID_OTP", "Invalid or expired OTP", 400)
+        user.set_password(payload.get("password", ""))
+        user.otp_code = None
+        user.otp_expires_at = None
+        db.session.commit()
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        logger.error("DB error on reset-password: %s", str(e))
+        return err("SERVER_ERROR", "Database error. Please try again.", 500)
+
     return ok({}, "Password reset successful")
