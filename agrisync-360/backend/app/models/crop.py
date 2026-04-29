@@ -32,6 +32,26 @@ class Crop(db.Model):
             return None
         return (self.expected_harvest_date - date.today()).days
 
+    def get_current_growth_stage(self):
+        """Auto-calculate growth stage based on days since planting"""
+        days = self.days_since_planting
+        if days is None or days < 0:
+            return "land_prep"
+        elif days <= 7:
+            return "germination"
+        elif days <= 21:
+            return "vegetative"
+        elif days <= 45:
+            return "vegetative"
+        elif days <= 60:
+            return "flowering"
+        elif days <= 80:
+            return "fruiting"
+        elif days <= 120:
+            return "maturity"
+        else:
+            return "harvested"
+
     def to_dict(self):
         return {
             "id": str(self.id),

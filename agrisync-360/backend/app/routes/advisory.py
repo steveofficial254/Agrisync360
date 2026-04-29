@@ -8,7 +8,7 @@ from app.models.crop import Crop
 from app.models.farm import Farm
 from app.models.farmer import Farmer
 from app.services.advisory_service import AdvisoryService
-from app.utils.decorators import admin_required
+from app.utils.decorators import admin_required, subscription_required
 
 advisory_bp = Blueprint("advisory", __name__, url_prefix="/api/advisory")
 
@@ -31,6 +31,7 @@ def calendar(crop_name):
 
 @advisory_bp.get("/nutrition/<crop_name>")
 @jwt_required()
+@subscription_required('pro')
 def nutrition(crop_name):
     return ok(AdvisoryService.get_nutrition_guide(crop_name, request.args.get("growth_stage")))
 
@@ -41,6 +42,7 @@ def pests(crop_name):
 
 @advisory_bp.get("/my-crops")
 @jwt_required()
+@subscription_required('basic')
 def my_crops():
     farmer = Farmer.query.filter_by(user_id=get_jwt_identity()).first_or_404()
     crops = Crop.query.join(Farm).filter(Farm.farmer_id == farmer.id, Crop.is_active.is_(True)).all()

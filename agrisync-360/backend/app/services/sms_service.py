@@ -1,60 +1,172 @@
-from datetime import datetime, timezone
-
 import africastalking
-
-from app.extensions import db
+import os
+import logging
 from app.models.sms import SMS
+from app.extensions import db
+from datetime import datetime
 
+logger = logging.getLogger(__name__)
 
 class SMSService:
-    def __init__(self):
-        from flask import current_app
 
-        africastalking.initialize(current_app.config.get("AT_USERNAME"), current_app.config.get("AT_API_KEY"))
-        self.sms = africastalking.SMS
-        self.sender = current_app.config.get("AT_SENDER_ID")
+    _initialized = False
+    _sms = None
 
-    def send_sms(self, phone_number, message, farmer_id=None, message_type="general"):
-        log = SMS(farmer_id=farmer_id, phone_number=phone_number, message=message, message_type=message_type, status="pending")
-        db.session.add(log)
-        db.session.flush()
+    @classmethod
+    def initialize(cls):
+        if not cls._initialized:
+            username = os.getenv('AT_USERNAME', 'sandbox')
+            api_key = os.getenv('AT_API_KEY', '')
+            if api_key:
+                africastalking.initialize(username, api_key)
+                cls._sms = africastalking.SMS()
+                cls._initialized = True
+                logger.info("Africa's Talking initialized")
+            else:
+                logger.warning("AT_API_KEY not set — SMS disabled")
+
+    @classmethod
+    def send_sms(cls, phone_number, message, message_type='general',
+                 farmer_id=None):
+        cls.initialize()
+        
+        # Normalize phone
+        phone = cls.normalize_phone(phone_number)
+        
+        # Create log entry
+        log = SMS(
+            farmer_id=farmer_id,
+            phone_number=phone,
+            message=message,
+            message_type=message_type,
+            status='pending',
+            created_at=datetime.utcnow()
+        )
+        
         try:
-            result = self.sms.send(message, [phone_number], sender_id=self.sender)
-            recipient = result.get("SMSMessageData", {}).get("Recipients", [{}])[0]
-            log.status = "sent" if recipient.get("statusCode") in (101, "101") else "failed"
-            log.at_message_id = recipient.get("messageId")
-            log.cost = float(str(recipient.get("cost", "KES 0")).split(" ")[-1]) if recipient.get("cost") else None
-            log.sent_at = datetime.now(timezone.utc)
+            db.session.add(log)
             db.session.commit()
-            return {"message_id": log.at_message_id, "status": log.status}
-        except Exception:
-            log.status = "failed"
+            
+            if not cls._initialized:
+                # Dev mode — log and return without sending
+                logger.info(f"SMS (dev mode) to {phone}: {message}")
+                log.status = 'sent'
+                log.sent_at = datetime.utcnow()
+                db.session.commit()
+                return {"status": "dev_mode", "message_id": log.id}
+            
+            sender_id = os.getenv('AT_SENDER_ID', 'AGRISYNC')
+            response = cls._sms.send(
+                message=message,
+                recipients=[phone],
+                sender_id=sender_id
+            )
+            
+            recipients = response.get('SMSMessageData', {}) \
+                                 .get('Recipients', [])
+            
+            if recipients:
+                recipient = recipients[0]
+                status = recipient.get('status', 'unknown')
+                at_id = recipient.get('messageId', '')
+                cost = recipient.get('cost', '0')
+                
+                log.status = 'sent' if status == 'Success' else 'failed'
+                log.at_message_id = at_id
+                log.cost = float(str(cost).replace('KES ', ''))
+                log.sent_at = datetime.utcnow()
+                db.session.commit()
+                
+                logger.info(f"SMS sent to {phone}: {status}")
+                return {"status": status, "message_id": at_id}
+            
+        except Exception as e:
+            logger.error(f"SMS send failed to {phone}: {str(e)}")
+            log.status = 'failed'
             db.session.commit()
-            return {"message_id": None, "status": "failed"}
+            return {"status": "failed", "error": str(e)}
 
-    def send_bulk_sms(self, phone_numbers, message, message_type):
-        sent = 0
-        failed = 0
-        for i in range(0, len(phone_numbers), 100):
-            batch = phone_numbers[i:i + 100]
+    @classmethod
+    def send_bulk_sms(cls, phone_numbers, message, message_type='bulk'):
+        results = {"sent": 0, "failed": 0, "errors": []}
+        
+        # Process in batches of 100
+        batch_size = 100
+        for i in range(0, len(phone_numbers), batch_size):
+            batch = phone_numbers[i:i + batch_size]
             for phone in batch:
-                result = self.send_sms(phone, message, message_type=message_type)
-                if result["status"] == "sent":
-                    sent += 1
+                result = cls.send_sms(phone, message, message_type)
+                if result.get('status') in ['Success', 'sent', 'dev_mode']:
+                    results['sent'] += 1
                 else:
-                    failed += 1
-        return {"sent": sent, "failed": failed}
+                    results['failed'] += 1
+                    results['errors'].append({
+                        "phone": phone,
+                        "error": result.get('error', 'Unknown')
+                    })
+        
+        return results
 
-    def send_otp(self, phone_number, otp_code):
-        msg = f"Your AgriSync 360 verification code is {otp_code}. Valid for 10 minutes. Do not share this code."
-        return self.send_sms(phone_number, msg, message_type="otp")
+    @classmethod
+    def send_otp(cls, phone_number, otp_code):
+        message = (
+            f"Your AgriSync 360 verification code is: {otp_code}\n"
+            f"Valid for 10 minutes. Do not share this code.\n"
+            f"AgriSync 360"
+        )
+        return cls.send_sms(phone_number, message, 'otp')
 
-    def send_weather_alert(self, farmer, weather_data):
-        if weather_data.get("disease_risk_level") not in ["high", "very_high"] and not weather_data.get("frost_risk"):
-            return {"status": "skipped"}
-        msg = f"AgriSync Alert: Risk {weather_data.get('disease_risk_level')}. Rain {weather_data.get('precipitation_mm')}mm. Take preventive action."
-        return self.send_sms(farmer.user.phone, msg, farmer_id=farmer.id, message_type="weather_alert")
+    @classmethod
+    def send_weather_alert(cls, farmer, alert_data):
+        message = (
+            f"AgriSync Alert for {farmer.first_name}:\n"
+            f"{alert_data['title']}\n"
+            f"{alert_data['message']}\n"
+            f"Stay safe. - AgriSync 360"
+        )
+        return cls.send_sms(
+            farmer.user.phone, message, 
+            'weather_alert', farmer.id
+        )
 
-    def send_subscription_confirmation(self, farmer, payment):
-        msg = f"Payment confirmed. Plan: {payment.plan}. Valid until {payment.subscription_end}. Thank you for using AgriSync 360."
-        return self.send_sms(farmer.user.phone, msg, farmer_id=farmer.id, message_type="subscription")
+    @classmethod
+    def send_subscription_confirmation(cls, farmer, payment):
+        message = (
+            f"Hi {farmer.first_name}, payment confirmed!\n"
+            f"Plan: {payment.plan.replace('_', ' ').title()}\n"
+            f"Amount: KSH {int(payment.amount_ksh)}\n"
+            f"Receipt: {payment.mpesa_receipt_number}\n"
+            f"Valid until: {payment.subscription_end}\n"
+            f"Thank you - AgriSync 360"
+        )
+        return cls.send_sms(
+            farmer.user.phone, message,
+            'subscription', farmer.id
+        )
+
+    @classmethod
+    def send_market_alert(cls, farmer, crop, old_price, new_price, county):
+        change_pct = ((new_price - old_price) / old_price) * 100
+        direction = "up" if change_pct > 0 else "down"
+        message = (
+            f"Market Alert - {crop.title()}:\n"
+            f"Price in {county} is {direction} "
+            f"{abs(change_pct):.0f}%\n"
+            f"Current: KSH {new_price:.0f}/kg\n"
+            f"AgriSync 360 Market Intelligence"
+        )
+        return cls.send_sms(
+            farmer.user.phone, message,
+            'market_alert', farmer.id
+        )
+
+    @staticmethod
+    def normalize_phone(phone):
+        phone = str(phone).strip().replace(' ', '').replace('-', '')
+        if phone.startswith('+254'):
+            return phone
+        elif phone.startswith('254'):
+            return '+' + phone
+        elif phone.startswith('07') or phone.startswith('01'):
+            return '+254' + phone[1:]
+        return phone

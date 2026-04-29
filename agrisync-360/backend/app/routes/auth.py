@@ -222,6 +222,121 @@ def resend_otp():
 
 
 # ---------------------------------------------------------------------------
+# Verify Reset OTP
+# ---------------------------------------------------------------------------
+@auth_bp.post("/verify-reset-otp")
+@limiter.limit("5 per minute")
+def verify_reset_otp():
+    try:
+        payload = request.get_json() or {}
+        phone = normalize_phone(payload.get("phone", ""))
+        otp_code = payload.get("otp", "")
+        
+        user = User.query.filter_by(phone=phone).first()
+        if not user:
+            return err("USER_NOT_FOUND", "No account found with this phone number", 404)
+        
+        # Verify OTP matches and not expired
+        if not user.verify_otp(otp_code):
+            return err("INVALID_OTP", "Invalid or expired OTP", 400)
+        
+        # Verify otp_type = 'password_reset'
+        if user.otp_type != 'password_reset':
+            return err("INVALID_OTP_TYPE", "OTP not for password reset", 400)
+        
+        # Generate short-lived reset token (10 minutes)
+        import secrets
+        reset_token = secrets.token_urlsafe(32)
+        
+        # Store in Redis: reset_token:{token} → user_id, TTL 600s
+        from app.extensions import redis_client
+        redis_client.setex(f"reset_token:{reset_token}", 600, str(user.id))
+        
+        # Clear OTP from user record
+        user.otp_code = None
+        user.otp_expires_at = None
+        user.otp_type = None
+        db.session.commit()
+        
+        response_data = {"reset_token": reset_token}
+        return ok(response_data, "OTP verified. Use reset_token to set new password.")
+        
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        logger.error("DB error on verify-reset-otp: %s", str(e))
+        return err("SERVER_ERROR", "Database error. Please try again.", 500)
+    except Exception as e:
+        logger.error("Error on verify-reset-otp: %s", str(e))
+        return err("SERVER_ERROR", "Server error. Please try again.", 500)
+
+
+# ---------------------------------------------------------------------------
+# Reset Password with Token
+# ---------------------------------------------------------------------------
+@auth_bp.post("/reset-password")
+@limiter.limit("5 per minute")
+def reset_password():
+    try:
+        payload = request.get_json() or {}
+        reset_token = payload.get("reset_token", "")
+        new_password = payload.get("new_password", "")
+        
+        if not reset_token or not new_password:
+            return err("VALIDATION_ERROR", "reset_token and new_password are required", 400)
+        
+        # Validate new password
+        if len(new_password) < 8:
+            return err("VALIDATION_ERROR", "Password must be at least 8 characters", 400)
+        
+        if not any(c.isupper() for c in new_password):
+            return err("VALIDATION_ERROR", "Password must contain at least 1 uppercase letter", 400)
+        
+        if not any(c.isdigit() for c in new_password):
+            return err("VALIDATION_ERROR", "Password must contain at least 1 number", 400)
+        
+        # Get reset token from Redis
+        from app.extensions import redis_client
+        user_id_str = redis_client.get(f"reset_token:{reset_token}")
+        
+        if not user_id_str:
+            return err("INVALID_TOKEN", "Invalid or expired reset token", 400)
+        
+        user = User.query.get(user_id_str)
+        if not user:
+            return err("USER_NOT_FOUND", "User not found", 404)
+        
+        # Check if same as current password
+        if user.check_password(new_password):
+            return err("VALIDATION_ERROR", "New password cannot be same as current password", 400)
+        
+        # Set new password
+        user.set_password(new_password)
+        db.session.commit()
+        
+        # Delete reset token from Redis
+        redis_client.delete(f"reset_token:{reset_token}")
+        
+        # Send confirmation SMS
+        try:
+            message = ("Your AgriSync 360 password has been changed. "
+                     "If you did not do this contact us immediately. "
+                     "AgriSync 360")
+            SMSService.send_sms(user.phone, message, 'password_reset', user.id)
+        except Exception as sms_err:
+            logger.warning("SMS send failed on password reset confirmation: %s", str(sms_err))
+        
+        return ok({}, "Password reset successfully. Please login.")
+        
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        logger.error("DB error on reset-password: %s", str(e))
+        return err("SERVER_ERROR", "Database error. Please try again.", 500)
+    except Exception as e:
+        logger.error("Error on reset-password: %s", str(e))
+        return err("SERVER_ERROR", "Server error. Please try again.", 500)
+
+
+# ---------------------------------------------------------------------------
 # Logout
 # ---------------------------------------------------------------------------
 @auth_bp.post("/logout")
@@ -243,6 +358,7 @@ def forgot_password():
         if not user:
             return err("USER_NOT_FOUND", "No account found with this phone number", 404)
         otp = user.generate_otp()
+        user.otp_type = 'password_reset'
         db.session.commit()
     except SQLAlchemyError as e:
         db.session.rollback()

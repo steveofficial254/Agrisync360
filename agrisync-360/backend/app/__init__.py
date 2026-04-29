@@ -33,7 +33,37 @@ def create_app(config_name="development"):
 
     @app.get("/api/health")
     def health():
-        return jsonify({"success": True, "message": "AgriSync 360 API running"}), 200
+        import os
+        from sqlalchemy import text
+        
+        checks = {}
+        
+        # Check database
+        try:
+            db.session.execute(text('SELECT 1'))
+            checks['database'] = 'ok'
+        except Exception as e:
+            checks['database'] = f'error: {str(e)}'
+        
+        # Check Redis
+        try:
+            redis_client.ping()
+            checks['redis'] = 'ok'
+        except Exception as e:
+            checks['redis'] = f'error: {str(e)}'
+        
+        all_ok = all(v == 'ok' for v in checks.values())
+        
+        return jsonify({
+            "success": True,
+            "data": {
+                "status": "healthy" if all_ok else "degraded",
+                "version": "1.0.0",
+                "environment": os.getenv('FLASK_ENV', 'development'),
+                "checks": checks
+            },
+            "message": "AgriSync 360 API running"
+        }), 200
 
     @app.errorhandler(400)
     def handle_400(error):

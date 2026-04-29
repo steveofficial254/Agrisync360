@@ -2,8 +2,10 @@ import json
 import logging
 
 from flask import Blueprint, jsonify, request
+from flask_jwt_extended import jwt_required
 
 from app.services.weather_service import WeatherService
+from app.utils.decorators import subscription_required
 
 logger = logging.getLogger(__name__)
 weather_bp = Blueprint("weather", __name__, url_prefix="/api/weather")
@@ -45,6 +47,8 @@ def forecast():
 # Authenticated endpoints
 # -----------------------------------------------------------------------
 @weather_bp.get("/planting-window")
+@jwt_required()
+@subscription_required('basic')
 def planting_window():
     lat = request.args.get("lat")
     lon = request.args.get("lon")
@@ -63,6 +67,8 @@ def planting_window():
 
 
 @weather_bp.get("/disease-risk")
+@jwt_required()
+@subscription_required('pro')
 def disease_risk():
     lat = request.args.get("lat")
     lon = request.args.get("lon")

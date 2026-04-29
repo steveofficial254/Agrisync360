@@ -8,6 +8,8 @@ from app.routes.payments import payments_bp
 from app.routes.sms import sms_bp
 from app.routes.ussd import ussd_bp
 from app.routes.weather import weather_bp
+from app.routes.agro_dealer import agro_dealer_bp
+from app.routes.ngo import ngo_bp
 
 ALL_BLUEPRINTS = [
     auth_bp,
@@ -19,5 +21,7 @@ ALL_BLUEPRINTS = [
     payments_bp,
     sms_bp,
     ussd_bp,
+    agro_dealer_bp,
+    ngo_bp,
     admin_bp,
 ]
