@@ -25,10 +25,10 @@ class User(db.Model):
     is_verified = db.Column(db.Boolean, default=False, nullable=False)
     otp_code = db.Column(db.String(6), nullable=True)
     otp_expires_at = db.Column(db.DateTime(timezone=True), nullable=True)
-    otp_type = db.Column(
-        db.Enum('phone_verification', 'password_reset', name='otp_type_enum'),
-        nullable=True
-    )
+    # otp_type = db.Column(
+    #     db.Enum('phone_verification', 'password_reset', name='otp_type_enum'),
+    #     nullable=True
+    # )
     created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
     updated_at = db.Column(
         db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc)

@@ -16,7 +16,7 @@ class BaseConfig:
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=12)
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
 
-    RATELIMIT_DEFAULT = "100 per hour"
+    RATELIMIT_DEFAULT = "1000 per hour"
     RATELIMIT_STORAGE_URI = os.environ.get("REDIS_URL", "memory://")
 
     REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")

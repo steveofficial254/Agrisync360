@@ -1,14 +1,15 @@
 from flask import Blueprint, jsonify, request
-from flask_jwt_extended import get_jwt_identity, jwt_required
+from flask_jwt_extended import get_jwt_identity, jwt_required, verify_jwt_in_request
 from marshmallow import ValidationError
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 import logging
 
-from app.extensions import db
+from app.extensions import db, limiter
 from app.models.crop import Crop
 from app.models.farm import Farm
 from app.models.farmer import Farmer
 from app.services.weather_service import WeatherService
+# from app.services.geocoding_service import GeocodingService  # Temporarily disabled
 
 farms_bp = Blueprint("farms", __name__, url_prefix="/api/farms")
 
@@ -19,66 +20,181 @@ def err(error="error", message="Request failed", status=400, details=None):
         body["details"] = details
     return jsonify(body), status
 
-
 logger = logging.getLogger(__name__)
+
+# Health check endpoint (no JWT required for debugging)
+@farms_bp.get("/health")
+def farms_health():
+    return jsonify({
+        "success": True,
+        "message": "Farms blueprint is working",
+        "routes": [
+            "GET /api/farms/health",
+            "POST /api/farms/",
+            "GET /api/farms/",
+            "GET /api/farms/<id>",
+            "PUT /api/farms/<id>",
+            "DELETE /api/farms/<id>"
+        ]
+    })
+
+# Debug endpoint to test create_farm without JWT (temporary)
+@farms_bp.post("/debug-create")
+def debug_create_farm():
+    try:
+        return jsonify({
+            "success": True,
+            "message": "Debug create endpoint is working",
+            "request_data": "Endpoint is accessible"
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 # Valid soil types and water sources
 SOIL_TYPES = ["clay", "loam", "sandy", "silt", "peat"]
 WATER_SOURCES = ["rain", "irrigation", "river", "borehole", "none"]
 
 
-def my_farmer():
-    return Farmer.query.filter_by(user_id=get_jwt_identity()).first()
-
-
 @farms_bp.post("/")
 @jwt_required()
 def create_farm():
     try:
-        farmer = my_farmer()
+        user_id = get_jwt_identity()
+        logger.info(f"Farm creation request - User ID: {user_id}")
+        
+        farmer = Farmer.query.filter_by(user_id=user_id).first()
+        logger.info(f"Farmer found: {farmer is not None}")
+        
         if not farmer:
-            return err("not_found", "Farmer profile not found. Please complete your profile first.", 404)
+            logger.warning(f"User {user_id} trying to create farm but no farmer profile exists")
+            return err(
+                "farmer_profile_required", 
+                "You need to create a farmer profile before adding farms. Please complete your profile first.", 
+                404,
+                {
+                    "action_required": "create_farmer_profile",
+                    "redirect_to": "/api/farmers/profile",
+                    "message": "Create your farmer profile with location and farm details first"
+                }
+            )
         
         payload = request.get_json() or {}
+        logger.info(f"Farm creation payload received: {payload}")
+        
+        # Auto-generate coordinates from county/sub-county if not provided
+        if "latitude" not in payload or "longitude" not in payload:
+            # Temporarily use default coordinates for Nairobi
+            payload["latitude"] = -1.2921
+            payload["longitude"] = 36.8219
+            logger.info(f"Using default Nairobi coordinates for debugging")
+        
+        logger.info(f"Final farm payload: {payload}")
+        
+        # TODO: Re-enable geocoding once import issue is fixed
+        """
+        county = payload.get("county")
+        sub_county = payload.get("sub_county")
+        
+        if county:
+            auto_coords = GeocodingService.get_coordinates_for_location(county, sub_county)
+            if auto_coords:
+                payload["latitude"], payload["longitude"] = auto_coords
+                logger.info(f"Auto-generated coordinates for {county}, {sub_county}: {auto_coords}")
+            else:
+                return err("validation_error", f"Unable to determine coordinates for county: {county}", 400)
+        else:
+            return err("validation_error", "County is required for automatic location detection", 400)
+        """
         
         # Validate required fields
         required_fields = ["name", "latitude", "longitude", "county", "size_acres", "soil_type", "water_source"]
+        logger.info(f"Validating required fields: {required_fields}")
+        
         for field in required_fields:
             if field not in payload:
+                logger.error(f"Missing required field: {field}")
                 return err("validation_error", f"Missing required field: {field}", 400)
+            logger.info(f"Field {field} present: {payload[field]}")
+        
+        logger.info("All required fields present")
         
         # Validate coordinates
         try:
+            logger.info(f"Validating coordinates: lat={payload['latitude']}, lon={payload['longitude']}")
             lat = float(payload["latitude"])
             lon = float(payload["longitude"])
+            logger.info(f"Parsed coordinates: lat={lat}, lon={lon}")
+            
             if not (-90 <= lat <= 90) or not (-180 <= lon <= 180):
+                logger.error(f"Coordinates out of range: lat={lat}, lon={lon}")
                 return err("validation_error", "Invalid coordinates. Latitude must be -90 to 90, longitude -180 to 180", 400)
-        except (ValueError, TypeError):
+            
+            logger.info("Coordinates are in valid range")
+            
+            # Validate coordinates are within Kenya (temporarily disabled)
+            # if not GeocodingService.validate_coordinates(lat, lon):
+            #     return err("validation_error", "Coordinates appear to be outside Kenya. Please check your location.", 400)
+                
+        except (ValueError, TypeError) as e:
+            logger.error(f"Coordinate validation error: {e}")
             return err("validation_error", "Invalid coordinate format", 400)
         
         # Validate size
         try:
+            logger.info(f"Validating size: {payload['size_acres']}")
             size_acres = float(payload["size_acres"])
+            logger.info(f"Parsed size: {size_acres}")
+            
             if not (0 < size_acres < 10000):
+                logger.error(f"Size out of range: {size_acres}")
                 return err("validation_error", "Farm size must be between 0 and 10000 acres", 400)
-        except (ValueError, TypeError):
+            
+            logger.info("Size validation passed")
+        except (ValueError, TypeError) as e:
+            logger.error(f"Size validation error: {e}")
             return err("validation_error", "Invalid size format", 400)
         
         # Validate enums
+        logger.info(f"Validating soil type: {payload.get('soil_type')} (allowed: {SOIL_TYPES})")
         if payload.get("soil_type") not in SOIL_TYPES:
+            logger.error(f"Invalid soil type: {payload.get('soil_type')}")
             return err("validation_error", f"Invalid soil type. Must be one of: {', '.join(SOIL_TYPES)}", 400)
         
+        logger.info(f"Validating water source: {payload.get('water_source')} (allowed: {WATER_SOURCES})")
         if payload.get("water_source") not in WATER_SOURCES:
+            logger.error(f"Invalid water source: {payload.get('water_source')}")
             return err("validation_error", f"Invalid water source. Must be one of: {', '.join(WATER_SOURCES)}", 400)
+        
+        logger.info("Soil type and water source validation passed")
         
         # Validate county
         from app.routes.farmers import KENYAN_COUNTIES
-        if payload.get("county") not in KENYAN_COUNTIES:
-            return err("validation_error", "Invalid Kenyan county", 400)
+        logger.info(f"Validating county: {payload.get('county')} (allowed sample: {KENYAN_COUNTIES[:5]})")
+        
+        # Check case-insensitive county validation
+        county = payload.get("county")
+        if county not in KENYAN_COUNTIES:
+            # Try case-insensitive match
+            county_lower = county.lower()
+            matching_counties = [c for c in KENYAN_COUNTIES if c.lower() == county_lower]
+            
+            if matching_counties:
+                logger.info(f"Found case-insensitive match: {county} -> {matching_counties[0]}")
+                payload["county"] = matching_counties[0]  # Fix the case
+            else:
+                logger.error(f"Invalid county: {county}")
+                return err("validation_error", f"Invalid Kenyan county: {county}. Must be one of: {', '.join(KENYAN_COUNTIES[:10])}...", 400)
+        
+        logger.info("County validation passed")
+        logger.info("All validations passed - creating farm...")
         
         # Check if this is the first farm
         existing_farms_count = farmer.farms.filter_by(is_deleted=False).count()
         is_primary = existing_farms_count == 0
+        logger.info(f"Existing farms count: {existing_farms_count}, is_primary: {is_primary}")
         
         farm = Farm(
             farmer_id=farmer.id,
@@ -116,12 +232,17 @@ def create_farm():
 
 
 @farms_bp.get("/")
+@limiter.limit("1000 per hour")  # Generous limit for farm data
 @jwt_required()
 def list_farms():
     try:
-        farmer = my_farmer()
+        user_id = get_jwt_identity()
+        logger.info(f"Fetching farms for user_id: {user_id}")
+        
+        farmer = Farmer.query.filter_by(user_id=user_id).first()
         if not farmer:
-            return err("not_found", "Farmer profile not found", 404)
+            logger.warning(f"No farmer profile found for user_id: {user_id}")
+            return err("not_found", "No farmer profile found. Please create a farmer profile first.", 404)
         
         farms = farmer.farms.filter_by(is_deleted=False).all()
         farms_data = []
@@ -170,7 +291,8 @@ def list_farms():
 @jwt_required()
 def get_farm(farm_id):
     try:
-        farmer = my_farmer()
+        user_id = get_jwt_identity()
+        farmer = Farmer.query.filter_by(user_id=user_id).first()
         if not farmer:
             return err("not_found", "Farmer profile not found", 404)
         
@@ -222,7 +344,8 @@ def get_farm(farm_id):
 @jwt_required()
 def update_farm(farm_id):
     try:
-        farmer = my_farmer()
+        user_id = get_jwt_identity()
+        farmer = Farmer.query.filter_by(user_id=user_id).first()
         if not farmer:
             return err("not_found", "Farmer profile not found", 404)
         
@@ -298,7 +421,8 @@ def update_farm(farm_id):
 @jwt_required()
 def delete_farm(farm_id):
     try:
-        farmer = my_farmer()
+        user_id = get_jwt_identity()
+        farmer = Farmer.query.filter_by(user_id=user_id).first()
         if not farmer:
             return err("not_found", "Farmer profile not found", 404)
         
@@ -335,7 +459,8 @@ def delete_farm(farm_id):
 @jwt_required()
 def set_primary_farm(farm_id):
     try:
-        farmer = my_farmer()
+        user_id = get_jwt_identity()
+        farmer = Farmer.query.filter_by(user_id=user_id).first()
         if not farmer:
             return err("not_found", "Farmer profile not found", 404)
         
@@ -371,7 +496,10 @@ def set_primary_farm(farm_id):
 @jwt_required()
 def add_crop(farm_id):
     try:
-        farmer = my_farmer()
+        user_id = get_jwt_identity()
+        logger.info(f"Crop creation request - User ID: {user_id}, Farm ID: {farm_id}")
+        
+        farmer = Farmer.query.filter_by(user_id=user_id).first()
         if not farmer:
             return err("not_found", "Farmer profile not found", 404)
         
@@ -381,6 +509,7 @@ def add_crop(farm_id):
             return err("not_found", "Farm not found", 404)
         
         payload = request.get_json() or {}
+        logger.info(f"Crop creation payload: {payload}")
         
         # Validate required fields
         required_fields = ["crop_name", "planting_date", "area_planted_acres"]
@@ -477,10 +606,12 @@ def add_crop(farm_id):
 
 
 @farms_bp.get("/<farm_id>/crops")
+@limiter.limit("2000 per hour")
 @jwt_required()
 def list_crops(farm_id):
     try:
-        farmer = my_farmer()
+        user_id = get_jwt_identity()
+        farmer = Farmer.query.filter_by(user_id=user_id).first()
         if not farmer:
             return err("not_found", "Farmer profile not found", 404)
         
@@ -519,7 +650,8 @@ def list_crops(farm_id):
 @jwt_required()
 def update_crop(farm_id, crop_id):
     try:
-        farmer = my_farmer()
+        user_id = get_jwt_identity()
+        farmer = Farmer.query.filter_by(user_id=user_id).first()
         if not farmer:
             return err("not_found", "Farmer profile not found", 404)
         
@@ -567,7 +699,8 @@ def update_crop(farm_id, crop_id):
 @jwt_required()
 def remove_crop(farm_id, crop_id):
     try:
-        farmer = my_farmer()
+        user_id = get_jwt_identity()
+        farmer = Farmer.query.filter_by(user_id=user_id).first()
         if not farmer:
             return err("not_found", "Farmer profile not found", 404)
         

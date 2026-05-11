@@ -11,7 +11,7 @@ from redis import Redis
 db = SQLAlchemy()
 migrate = Migrate()
 jwt = JWTManager()
-cors = CORS()
+cors = CORS(supports_credentials=True)
 limiter = Limiter(key_func=get_remote_address)
 redis_client = Redis(decode_responses=True)
 celery = Celery(__name__)

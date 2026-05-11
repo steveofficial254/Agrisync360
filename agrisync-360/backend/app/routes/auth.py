@@ -75,7 +75,7 @@ def register():
 
     # FIX 2 — SMS failure does NOT cause registration to fail
     try:
-        SMSService().send_otp(phone, otp)
+        SMSService.send_otp(phone, otp)
     except Exception as sms_err:
         logger.warning("SMS send failed (registration proceeds): %s", str(sms_err))
 
@@ -184,6 +184,7 @@ def login():
 # Token refresh
 # ---------------------------------------------------------------------------
 @auth_bp.post("/refresh")
+@limiter.limit("1000 per hour")  # More lenient for token refresh
 @jwt_required(refresh=True)
 def refresh():
     from flask_jwt_extended import get_jwt_identity
@@ -210,7 +211,7 @@ def resend_otp():
         return err("SERVER_ERROR", "Database error. Please try again.", 500)
 
     try:
-        SMSService().send_otp(phone, otp)
+        SMSService.send_otp(phone, otp)
     except Exception as sms_err:
         logger.warning("SMS send failed on resend-otp: %s", str(sms_err))
 
@@ -366,7 +367,7 @@ def forgot_password():
         return err("SERVER_ERROR", "Database error. Please try again.", 500)
 
     try:
-        SMSService().send_otp(phone, otp)
+        SMSService.send_otp(phone, otp)
     except Exception as sms_err:
         logger.warning("SMS send failed on forgot-password: %s", str(sms_err))
 
@@ -377,9 +378,9 @@ def forgot_password():
     return ok(response_data, "Password reset OTP sent. Check your phone.")
 
 
-@auth_bp.post("/reset-password")
+@auth_bp.post("/reset-password-otp")
 @limiter.limit("5 per minute")
-def reset_password():
+def reset_password_otp():
     try:
         payload = request.get_json() or {}
         phone = normalize_phone(payload.get("phone", ""))

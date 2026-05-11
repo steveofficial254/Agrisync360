@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 @ngo_bp.get("/profile")
 @jwt_required()
-@ngo_required()
+@ngo_required
 def get_profile():
     """Get NGO organization profile"""
     try:
@@ -53,7 +53,7 @@ def get_profile():
 
 @ngo_bp.post("/profile")
 @jwt_required()
-@ngo_required()
+@ngo_required
 def create_profile():
     """Create NGO profile"""
     try:
@@ -98,7 +98,7 @@ def create_profile():
 
 @ngo_bp.put("/profile")
 @jwt_required()
-@ngo_required()
+@ngo_required
 def update_profile():
     """Update NGO profile"""
     try:
@@ -130,7 +130,7 @@ def update_profile():
 
 @ngo_bp.get("/dashboard")
 @jwt_required()
-@ngo_required()
+@ngo_required
 def dashboard():
     """Get NGO impact dashboard"""
     try:
@@ -219,7 +219,7 @@ def dashboard():
 
 @ngo_bp.post("/farmers/bulk-register")
 @jwt_required()
-@ngo_required()
+@ngo_required
 def bulk_register():
     """Register multiple farmers at once"""
     try:
@@ -278,7 +278,7 @@ def bulk_register():
 
 @ngo_bp.get("/farmers/bulk-register/<batch_id>")
 @jwt_required()
-@ngo_required()
+@ngo_required
 def get_bulk_registration_status(batch_id):
     """Check batch registration status"""
     try:
@@ -302,7 +302,7 @@ def get_bulk_registration_status(batch_id):
 
 @ngo_bp.get("/farmers")
 @jwt_required()
-@ngo_required()
+@ngo_required
 def get_farmers():
     """List all farmers registered under this NGO"""
     try:
@@ -370,7 +370,7 @@ def get_farmers():
 
 @ngo_bp.post("/broadcast")
 @jwt_required()
-@ngo_required()
+@ngo_required
 def broadcast():
     """Send advisory SMS to all NGO farmers"""
     try:
@@ -438,7 +438,7 @@ def broadcast():
 
 @ngo_bp.get("/reports/impact")
 @jwt_required()
-@ngo_required()
+@ngo_required
 def impact_report():
     """Monthly impact report"""
     try:

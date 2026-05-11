@@ -42,7 +42,27 @@ def get_profile():
     try:
         farmer = Farmer.query.filter_by(user_id=get_jwt_identity()).first()
         if not farmer:
-            return err("not_found", "Profile not set up. Please complete your profile.", 404)
+            # Return empty profile instead of 404
+            return jsonify({
+                "success": True,
+                "data": {
+                    "id": None,
+                    "first_name": "",
+                    "last_name": "",
+                    "county": "",
+                    "sub_county": "",
+                    "ward": "",
+                    "village": "",
+                    "national_id": "",
+                    "profile_photo": None,
+                    "phone": "",
+                    "farms": [],
+                    "active_crops": [],
+                    "profile_complete": False,
+                    "message": "Please complete your profile to access all features"
+                },
+                "message": "Profile data retrieved (incomplete)"
+            }), 200
         
         # Get farms and active crops
         farms_data = []
@@ -153,9 +173,15 @@ def create_profile():
 @jwt_required()
 def update_profile():
     try:
-        farmer = Farmer.query.filter_by(user_id=get_jwt_identity()).first()
+        user_id = get_jwt_identity()
+        logger.info(f"Profile update request - User ID: {user_id}")
+        
+        farmer = Farmer.query.filter_by(user_id=user_id).first()
+        logger.info(f"Farmer found for update: {farmer is not None}")
+        
         if not farmer:
-            return err("not_found", "Profile not found", 404)
+            logger.warning(f"User {user_id} trying to update profile but no farmer profile exists")
+            return err("not_found", "Profile not found. Please create your profile first.", 404)
         
         payload = request.get_json() or {}
         

@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 @agro_dealer_bp.get("/profile")
 @jwt_required()
-@agro_dealer_required()
+@agro_dealer_required
 def get_profile():
     """Get agro-dealer business profile"""
     try:
@@ -50,7 +50,7 @@ def get_profile():
 
 @agro_dealer_bp.post("/profile")
 @jwt_required()
-@agro_dealer_required()
+@agro_dealer_required
 def create_profile():
     """Create agro-dealer profile"""
     try:
@@ -94,7 +94,7 @@ def create_profile():
 
 @agro_dealer_bp.put("/profile")
 @jwt_required()
-@agro_dealer_required()
+@agro_dealer_required
 def update_profile():
     """Update agro-dealer profile"""
     try:
@@ -126,7 +126,7 @@ def update_profile():
 
 @agro_dealer_bp.get("/stats")
 @jwt_required()
-@agro_dealer_required()
+@agro_dealer_required
 def get_stats():
     """Get dealer statistics"""
     try:
@@ -174,7 +174,7 @@ def get_stats():
 
 @agro_dealer_bp.get("/farmers")
 @jwt_required()
-@agro_dealer_required()
+@agro_dealer_required
 def get_farmers():
     """List farmers in dealer's county"""
     try:
@@ -240,7 +240,7 @@ def get_farmers():
 
 @agro_dealer_bp.post("/products")
 @jwt_required()
-@agro_dealer_required()
+@agro_dealer_required
 def add_product():
     """Add product recommendation"""
     try:
@@ -293,7 +293,7 @@ def add_product():
 
 @agro_dealer_bp.get("/products")
 @jwt_required()
-@agro_dealer_required()
+@agro_dealer_required
 def get_products():
     """List dealer's products"""
     try:
@@ -314,7 +314,7 @@ def get_products():
 
 @agro_dealer_bp.put("/products/<product_id>")
 @jwt_required()
-@agro_dealer_required()
+@agro_dealer_required
 def update_product(product_id):
     """Update product recommendation"""
     try:
@@ -362,7 +362,7 @@ def update_product(product_id):
 
 @agro_dealer_bp.delete("/products/<product_id>")
 @jwt_required()
-@agro_dealer_required()
+@agro_dealer_required
 def delete_product(product_id):
     """Remove product recommendation"""
     try:
@@ -395,7 +395,7 @@ def delete_product(product_id):
 
 @agro_dealer_bp.post("/broadcast")
 @jwt_required()
-@agro_dealer_required()
+@agro_dealer_required
 def broadcast():
     """Send product advisory to farmers in county"""
     try:
@@ -462,7 +462,7 @@ def broadcast():
 
 @agro_dealer_bp.get("/recommendations/analytics")
 @jwt_required()
-@agro_dealer_required()
+@agro_dealer_required
 def recommendations_analytics():
     """Get product recommendation analytics"""
     try:

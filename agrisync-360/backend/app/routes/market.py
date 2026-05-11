@@ -112,12 +112,16 @@ def profitability():
         
         crop = request.args.get("crop")
         acres = request.args.get("acres")
+        county = request.args.get("county") or farmer.county
         
         if not crop:
             return err("validation_error", "crop parameter is required", 400)
         
         if not acres:
             return err("validation_error", "acres parameter is required", 400)
+        
+        if not county:
+            return err("validation_error", "county parameter is required (or complete your profile)", 400)
         
         try:
             acres = float(acres)
@@ -129,7 +133,7 @@ def profitability():
         profitability = MarketService.calculate_profitability(
             crop_name=crop, 
             acres=acres, 
-            county=farmer.county
+            county=county
         )
         
         if "error" in profitability:

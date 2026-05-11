@@ -12,7 +12,7 @@ class AgroDealer(db.Model):
     __tablename__ = 'agro_dealer'
     
     id = db.Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('user.id'), unique=True)
+    user_id = db.Column(UUID(as_uuid=True), db.ForeignKey('users.id'), unique=True)
     business_name = db.Column(db.String(200), nullable=False)
     business_location = db.Column(db.String(200))
     county = db.Column(db.String(100))

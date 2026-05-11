@@ -57,15 +57,7 @@ class WeatherService:
                 params={
                     "latitude": lat,
                     "longitude": lon,
-                    "daily": [
-                        "temperature_2m_max",
-                        "temperature_2m_min",
-                        "precipitation_sum",
-                        "windspeed_10m_max",
-                        "relativehumidity_2m_max",
-                        "weathercode",
-                    ],
-                    "timezone": "Africa/Nairobi",
+                    "daily": "temperature_2m_max,temperature_2m_min,precipitation_sum",
                     "forecast_days": 7,
                 },
                 timeout=20,
@@ -73,6 +65,9 @@ class WeatherService:
             response.raise_for_status()
         except Exception as api_err:
             logger.error("Open-Meteo API error: %s", api_err)
+            if hasattr(api_err, 'response') and api_err.response is not None:
+                logger.error("API Response Status: %s", api_err.response.status_code)
+                logger.error("API Response Text: %s", api_err.response.text)
             return None  # Caller returns 503
 
         payload = response.json().get("daily", {})
@@ -81,10 +76,10 @@ class WeatherService:
         for idx, day_str in enumerate(payload.get("time", [])):
             tmax = payload.get("temperature_2m_max", [None] * 7)[idx]
             tmin = payload.get("temperature_2m_min", [None] * 7)[idx]
-            hum = payload.get("relativehumidity_2m_max", [None] * 7)[idx]
             rain = payload.get("precipitation_sum", [0] * 7)[idx] or 0
-            wind = payload.get("windspeed_10m_max", [None] * 7)[idx]
-            wcode = payload.get("weathercode", [None] * 7)[idx]
+            hum = None  # Not available in simplified API
+            wind = None  # Not available in simplified API
+            wcode = 0  # Default to clear weather
 
             disease_risk = WeatherService.calculate_disease_risk(tmax, tmin, hum, None)
             frost_risk = WeatherService.check_frost_risk(tmin)
@@ -97,7 +92,7 @@ class WeatherService:
                 "humidity_percent": hum,
                 "wind_speed_kmh": wind,
                 "weather_code": wcode,
-                "weather_description": WEATHER_CODES.get(wcode, f"WMO-{wcode}"),
+                "weather_description": WEATHER_CODES.get(wcode, "Unknown"),
                 "disease_risk": disease_risk,
                 "frost_risk": frost_risk,
                 "planting_window": False,  # Updated below
@@ -116,7 +111,7 @@ class WeatherService:
                     humidity_percent=hum,
                     wind_speed_kmh=wind,
                     weather_code=wcode,
-                    weather_description=WEATHER_CODES.get(wcode, f"WMO-{wcode}"),
+                    weather_description=WEATHER_CODES.get(wcode, "Unknown"),
                     disease_risk_level=disease_risk,
                     frost_risk=frost_risk,
                     planting_window=False,

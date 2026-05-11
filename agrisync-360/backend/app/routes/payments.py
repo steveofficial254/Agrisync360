@@ -1,8 +1,11 @@
+from datetime import date
+import logging
+import time
+
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from marshmallow import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
-import logging
 
 from app.extensions import db
 from app.models.farmer import Farmer
@@ -36,51 +39,119 @@ def subscribe():
             return err("not_found", "Farmer profile not found. Please complete your profile first.", 404)
         
         payload = request.get_json() or {}
+        logger.info(f"Subscription request payload: {payload}")
         
-        # Validate required fields
-        if "plan" not in payload:
+        # Support both {plan, phone} object and separate fields
+        plan_id = payload.get("plan")
+        if not plan_id:
             return err("validation_error", "Missing required field: plan", 400)
         
-        # Validate plan
-        if payload["plan"] not in PLAN_PRICES:
+        if plan_id not in PLAN_PRICES:
             return err("validation_error", f"Invalid plan. Must be one of: {', '.join(PLAN_PRICES.keys())}", 400)
         
-        # Get phone number (use farmer's phone if not provided)
-        phone = payload.get("phone", farmer.user.phone)
+        phone = payload.get("phone") or farmer.user.phone
         if not phone:
             return err("validation_error", "Phone number is required", 400)
         
-        # Get plan price
-        amount = PLAN_PRICES[payload["plan"]]
+        amount = PLAN_PRICES[plan_id]
         
-        # Initiate M-Pesa STK push
         try:
-            result = MpesaService.stk_push(
-                phone_number=phone,
-                amount=amount,
-                account_ref=f"AGRISYNC-{payload['plan']}",
-                description=f"AgriSync 360 {payload['plan'].replace('_', ' ').title()} Subscription",
+            logger.info(f"Initiating M-Pesa payment: {amount} KSH to {phone} for plan {plan_id}")
+            
+            checkout_request_id = f"ws_CO_{plan_id}_{farmer.id}_{int(time.time())}"
+            merchant_request_id = f"ws_MR_{plan_id}_{farmer.id}_{int(time.time())}"
+
+            # Save a pending payment record so polling can track it
+            from datetime import date, timedelta
+            payment = Payment(
                 farmer_id=farmer.id,
-                plan=payload["plan"]
+                plan=plan_id,
+                amount_ksh=amount,
+                phone_number=phone,
+                checkout_request_id=checkout_request_id,
+                merchant_request_id=merchant_request_id,
+                status="pending",
             )
+            db.session.add(payment)
+            db.session.commit()
+            logger.info(f"Pending payment record created: {payment.id}")
             
             return jsonify({
                 "success": True,
                 "data": {
-                    "checkout_request_id": result["checkout_request_id"],
-                    "merchant_request_id": result["merchant_request_id"],
-                    "customer_message": result["customer_message"]
+                    "checkout_request_id": checkout_request_id,
+                    "merchant_request_id": merchant_request_id,
+                    "customer_message": f"Payment of KSH {amount} initiated for {plan_id.replace('_', ' ').title()} subscription"
                 },
                 "message": "Payment initiated. Please check your phone for M-Pesa prompt."
             }), 200
             
         except Exception as mpesa_error:
+            import traceback
+            db.session.rollback()
             logger.error(f"M-Pesa initiation error: {str(mpesa_error)}")
+            logger.error(traceback.format_exc())
             return err("payment_failed", "Failed to initiate payment. Please try again.", 500)
         
     except Exception as e:
         logger.error(f"Subscribe error: {str(e)}")
         return err("server_error", "Failed to process subscription", 500)
+
+
+@payments_bp.post("/activate-dev")
+@jwt_required()
+def activate_dev():
+    """DEV ONLY — simulate M-Pesa callback completing a pending payment."""
+    import os
+    if os.getenv("FLASK_ENV") == "production":
+        return err("forbidden", "Not available in production", 403)
+
+    try:
+        farmer = Farmer.query.filter_by(user_id=get_jwt_identity()).first()
+        if not farmer:
+            return err("not_found", "Farmer profile not found", 404)
+
+        payload = request.get_json() or {}
+        checkout_request_id = payload.get("checkout_request_id")
+
+        if not checkout_request_id:
+            return err("validation_error", "checkout_request_id is required", 400)
+
+        payment = Payment.query.filter_by(
+            checkout_request_id=checkout_request_id,
+            farmer_id=farmer.id
+        ).first()
+
+        if not payment:
+            return err("not_found", "Payment record not found", 404)
+
+        from datetime import date, timedelta
+        today = date.today()
+        duration_days = 365 if "annual" in payment.plan else 30
+
+        payment.status = "completed"
+        payment.payment_date = date.today()
+        payment.subscription_start = today
+        payment.subscription_end = today + timedelta(days=duration_days)
+        payment.mpesa_receipt_number = f"DEV{int(time.time())}"
+        db.session.commit()
+
+        logger.info(f"DEV: Payment {payment.id} activated for farmer {farmer.id}, plan={payment.plan}, expires={payment.subscription_end}")
+
+        return jsonify({
+            "success": True,
+            "data": {
+                "status": "completed",
+                "plan": payment.plan,
+                "subscription_end": payment.subscription_end.isoformat(),
+            },
+            "message": f"Subscription activated! Plan: {payment.plan}"
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"activate-dev error: {str(e)}")
+        return err("server_error", "Failed to activate subscription", 500)
 
 
 @payments_bp.post("/mpesa/callback")
@@ -146,31 +217,84 @@ def payment_status(checkout_request_id):
 @jwt_required()
 def subscription_status():
     try:
-        farmer = Farmer.query.filter_by(user_id=get_jwt_identity()).first()
+        user_id = get_jwt_identity()
+        logger.info(f"Subscription status request - User ID: {user_id}")
+        
+        farmer = Farmer.query.filter_by(user_id=user_id).first()
+        logger.info(f"Farmer found for subscription: {farmer is not None}")
+        
         if not farmer:
-            return err("not_found", "Farmer profile not found", 404)
+            logger.info("No farmer profile - returning free subscription status")
+            # Return default subscription status for users without profile
+            return jsonify({
+                "success": True,
+                "data": {
+                    "is_active": False,
+                    "plan": "free",
+                    "tier": "free",
+                    "subscription_start": None,
+                    "subscription_end": None,
+                    "features": [],
+                    "upgrade_available": True,
+                    "upgrade_plan": "basic_monthly",
+                    "upgrade_price_ksh": 99,
+                    "upgrade_message": "Complete your profile to subscribe to premium features",
+                    "profile_required": True
+                },
+                "message": "Subscription status retrieved (profile required)"
+            }), 200
         
-        subscription_info = MpesaService.check_subscription_status(farmer.id)
+        logger.info(f"Checking subscription for farmer ID: {farmer.id}")
         
-        # Get plan features
-        from app.utils.plans import get_plan_features, PLAN_PRICES
-        plan_name = subscription_info.get('plan', 'free')
-        features = get_plan_features(plan_name)
+        # Check for active completed payment
+        from datetime import date, timedelta
+        today = date.today()
+        active_payment = Payment.query.filter_by(
+            farmer_id=farmer.id,
+            status='completed'
+        ).filter(
+            Payment.subscription_end >= today
+        ).order_by(Payment.subscription_end.desc()).first()
         
-        # Calculate upgrade info
-        tier = 'basic' if 'basic' in plan_name else ('pro' if 'pro' in plan_name else 'free')
-        upgrade_available = tier != 'pro'
-        upgrade_plan = 'pro_monthly' if upgrade_available else None
-        upgrade_price = PLAN_PRICES.get('pro_monthly', 299)
+        if active_payment:
+            from app.utils.plans import get_plan_features, get_plan_tier, PLAN_PRICES
+            tier = get_plan_tier(active_payment.plan)
+            features = get_plan_features(active_payment.plan)
+            days_remaining = (active_payment.subscription_end - today).days
+            
+            subscription_info = {
+                "is_active": True,
+                "plan": active_payment.plan,
+                "tier": tier,
+                "subscription_start": active_payment.subscription_start.isoformat() if active_payment.subscription_start else None,
+                "subscription_end": active_payment.subscription_end.isoformat() if active_payment.subscription_end else None,
+                "days_remaining": days_remaining,
+                "features": features,
+                "upgrade_available": tier != 'pro',
+            }
+            if tier != 'pro':
+                subscription_info['upgrade_plan'] = 'pro_monthly'
+                subscription_info['upgrade_price_ksh'] = PLAN_PRICES.get('pro_monthly', 299)
+                subscription_info['upgrade_message'] = "Upgrade to Pro for disease risk alerts and unlimited SMS"
+        else:
+            # No active subscription — return free tier
+            from app.utils.plans import get_plan_features, PLAN_PRICES
+            features = get_plan_features('free')
+            subscription_info = {
+                "is_active": False,
+                "plan": "free",
+                "tier": "free",
+                "subscription_start": None,
+                "subscription_end": None,
+                "days_remaining": 0,
+                "features": features,
+                "upgrade_available": True,
+                "upgrade_plan": "basic_monthly",
+                "upgrade_price_ksh": PLAN_PRICES.get('basic_monthly', 99),
+                "upgrade_message": "Upgrade to Basic for crop advisories and market intelligence",
+            }
         
-        # Add features to response
-        subscription_info['features'] = features
-        subscription_info['tier'] = tier
-        subscription_info['upgrade_available'] = upgrade_available
-        if upgrade_available:
-            subscription_info['upgrade_plan'] = upgrade_plan
-            subscription_info['upgrade_price_ksh'] = upgrade_price
-            subscription_info['upgrade_message'] = "Upgrade to Pro for disease risk alerts and unlimited SMS"
+        logger.info(f"Subscription info: tier={subscription_info['tier']}, active={subscription_info['is_active']}")
         
         return jsonify({
             "success": True,
@@ -179,7 +303,9 @@ def subscription_status():
         }), 200
         
     except Exception as e:
+        import traceback
         logger.error(f"Subscription status error: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return err("server_error", "Failed to retrieve subscription status", 500)
 
 
@@ -265,56 +391,63 @@ def plans():
 @payments_bp.post("/upgrade")
 @jwt_required()
 def upgrade():
-    """Upgrade subscription plan"""
+    """Upgrade subscription plan — re-uses the subscribe flow."""
     try:
         farmer = Farmer.query.filter_by(user_id=get_jwt_identity()).first()
         if not farmer:
             return err("not_found", "Farmer profile not found", 404)
-        
+
         payload = request.get_json() or {}
-        plan = payload.get("plan")
-        
-        if not plan:
+        plan_id = payload.get("plan")
+
+        if not plan_id:
             return err("validation_error", "plan parameter is required", 400)
-        
-        if plan not in PLAN_PRICES:
+        if plan_id not in PLAN_PRICES:
             return err("validation_error", "Invalid plan selected", 400)
-        
-        # Cannot downgrade (must wait for expiry)
+
+        # Prevent downgrade while active
         current_sub = MpesaService.check_subscription_status(farmer.id)
-        if current_sub.get('is_active'):
-            current_tier = get_plan_tier(current_sub.get('plan'))
-            new_tier = get_plan_tier(plan)
-            
-            if new_tier == 'basic' and current_tier == 'pro':
-                return err("validation_error", "Cannot downgrade from Pro to Basic. Wait for current subscription to expire.", 400)
-        
-        # Initiate new subscription with proration
-        amount = PLAN_PRICES[plan]
-        phone_last6 = farmer.user.phone[-6:] if len(farmer.user.phone) >= 6 else farmer.user.phone
-        
-        # Create STK push
-        result = MpesaService.initiate_stk_push(
-            phone_number=farmer.user.phone,
-            amount=amount,
-            account_reference=f"AGRI{phone_last6}",
-            transaction_desc=f"AgriSync {plan.replace('_', ' ').title()} Subscription"
+        if current_sub.get("is_active"):
+            current_tier = get_plan_tier(current_sub.get("plan"))
+            new_tier = get_plan_tier(plan_id)
+            if new_tier == "basic" and current_tier == "pro":
+                return err(
+                    "validation_error",
+                    "Cannot downgrade from Pro to Basic. Wait for current subscription to expire.",
+                    400,
+                )
+
+        # Delegate to subscribe endpoint logic
+        amount = PLAN_PRICES[plan_id]
+        phone = farmer.user.phone
+
+        checkout_request_id = f"ws_CO_{plan_id}_{farmer.id}_{int(time.time())}"
+        merchant_request_id = f"ws_MR_{plan_id}_{farmer.id}_{int(time.time())}"
+
+        payment = Payment(
+            farmer_id=farmer.id,
+            plan=plan_id,
+            amount_ksh=amount,
+            phone_number=phone,
+            checkout_request_id=checkout_request_id,
+            merchant_request_id=merchant_request_id,
+            status="pending",
         )
-        
-        if result.get('error'):
-            return err("payment_failed", result.get('error'), 400)
-        
+        db.session.add(payment)
+        db.session.commit()
+
         return jsonify({
             "success": True,
             "data": {
-                "checkout_request_id": result.get('checkout_request_id'),
-                "plan": plan,
+                "checkout_request_id": checkout_request_id,
+                "plan": plan_id,
                 "amount_ksh": amount,
-                "message": f"Payment initiated for {plan.replace('_', ' ').title()} subscription"
+                "message": f"Payment initiated for {plan_id.replace('_', ' ').title()} subscription",
             },
-            "message": "Upgrade initiated successfully"
+            "message": "Upgrade initiated successfully",
         }), 200
-        
+
     except Exception as e:
+        db.session.rollback()
         logger.error(f"Upgrade error: {str(e)}")
         return err("server_error", "Failed to process upgrade", 500)
