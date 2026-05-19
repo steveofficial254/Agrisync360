@@ -41,6 +41,7 @@ export default function DashboardLayout() {
     { name: 'Advisory', href: '/admin/advisory', icon: BookOpen },
     { name: 'Market', href: '/admin/market', icon: TrendingUp },
     { name: 'Alerts', href: '/admin/alerts', icon: HelpCircle },
+    { name: 'Logout', action: handleLogout, icon: LogOut, variant: 'danger' },
   ];
 
   const dealerNav = [
@@ -111,8 +112,12 @@ export default function DashboardLayout() {
                 <button
                   key={item.name}
                   onClick={() => {
-                    navigate(item.href);
-                    setSidebarOpen(false);
+                    if (item.action) {
+                      item.action();
+                    } else {
+                      navigate(item.href);
+                      setSidebarOpen(false);
+                    }
                   }}
                   className={`
                     w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
@@ -120,6 +125,7 @@ export default function DashboardLayout() {
                       ? 'bg-primary-100 text-primary-700 border-r-2 border-primary-700'
                       : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                     }
+                    ${item.variant === 'danger' ? 'text-red-600 hover:bg-red-50 hover:text-red-700' : ''}
                   `}
                 >
                   <item.icon className="mr-3 h-5 w-5" />

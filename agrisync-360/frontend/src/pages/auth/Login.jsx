@@ -91,7 +91,8 @@ export default function Login() {
 
         setSuccess('Login successful! Redirecting to dashboard...');
         setTimeout(() => {
-          navigate(getDashboardPath(user?.role || 'farmer'));
+          const userRole = user?.role || 'farmer';
+          navigate(getDashboardPath(userRole));
         }, 1500);
       } else {
         throw new Error(data.message || 'Login failed');

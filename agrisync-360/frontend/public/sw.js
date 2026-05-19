@@ -3,7 +3,7 @@
  * Handles offline caching and background sync
  */
 
-const CACHE_VERSION = 'v1.0.0'
+const CACHE_VERSION = 'v1.0.1'
 const STATIC_CACHE = `agrisync-static-${CACHE_VERSION}` 
 const DYNAMIC_CACHE = `agrisync-dynamic-${CACHE_VERSION}` 
 const API_CACHE = `agrisync-api-${CACHE_VERSION}` 

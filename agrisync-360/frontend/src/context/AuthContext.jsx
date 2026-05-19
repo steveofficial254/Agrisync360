@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, useCallback, useRef } from "react";
 import authAPI from "../api/auth";
 import toast from "react-hot-toast";
 
@@ -31,9 +31,18 @@ export function useAuth() {
 }
 
 export function AuthProvider({ children }) {
+  // Type declarations for useState hooks
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isFarmer, setIsFarmer] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAgroDealer, setIsAgroDealer] = useState(false);
+  const [isNGO, setIsNGO] = useState(false);
+  
+  // Prevent re-render loops with refs
+  const isLoadingRef = useRef(false);
+  const isAuthenticatedRef = useRef(false);
 
   // Load persisted auth state on app startup
   useEffect(() => {
@@ -46,6 +55,10 @@ export function AuthProvider({ children }) {
           const parsed = JSON.parse(userData);
           setUser(parsed);
           setIsAuthenticated(true);
+          setIsFarmer(parsed.role === "farmer");
+          setIsAdmin(parsed.role === "admin");
+          setIsAgroDealer(parsed.role === "agro_dealer");
+          setIsNGO(parsed.role === "ngo_partner");
           console.log('[Auth] Restored session for:', parsed.role);
         } else {
           console.log('[Auth] No saved session found');
@@ -64,10 +77,7 @@ export function AuthProvider({ children }) {
     loadAuth();
   }, []);
 
-  const isFarmer = user?.role === "farmer";
-  const isAdmin = user?.role === "admin";
-  const isAgroDealer = user?.role === "agro_dealer";
-  const isNGO = user?.role === "ngo_partner";
+  // Role-based computed values (no duplicates - use state setters instead)
 
   const login = useCallback((userData, accessToken, refreshToken) => {
     // Save tokens with correct key names
@@ -78,6 +88,10 @@ export function AuthProvider({ children }) {
     // Update state
     setUser(userData);
     setIsAuthenticated(true);
+    setIsFarmer(userData.role === "farmer");
+    setIsAdmin(userData.role === "admin");
+    setIsAgroDealer(userData.role === "agro_dealer");
+    setIsNGO(userData.role === "ngo_partner");
 
     console.log('[Auth] Logged in as:', userData.role, userData.phone);
   }, []);
@@ -99,6 +113,10 @@ export function AuthProvider({ children }) {
 
       setUser(null);
       setIsAuthenticated(false);
+      setIsFarmer(false);
+      setIsAdmin(false);
+      setIsAgroDealer(false);
+      setIsNGO(false);
 
       console.log('[Auth] Logged out');
     }

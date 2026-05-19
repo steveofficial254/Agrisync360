@@ -11,7 +11,10 @@ import {
   Cloud, Droplets, Wind, Thermometer,
   AlertTriangle, CheckCircle, Info, Sun,
   CloudRain, Zap, Eye, RefreshCw,
-  MapPin, Calendar, TrendingUp
+  MapPin, Calendar, TrendingUp,
+  Snowflake, CloudDrizzle, Gauge,
+  Sunrise, Sunset, Compass,
+  Activity, BarChart3, Timer
 } from 'lucide-react';
 import {
   LineChart, Line, BarChart, Bar,
@@ -49,7 +52,7 @@ export default function Weather() {
 
       if (isAuthenticated) {
         try {
-          const farmsResp = await farmersAPI.getFarms();
+          const farmsResp = await farmersAPI.listFarms();
           const farms = farmsResp.data?.data || [];
           const primaryFarm = farms.find(f => f.is_primary) || farms[0];
           if (primaryFarm?.latitude && primaryFarm?.longitude) {
@@ -99,15 +102,15 @@ export default function Weather() {
   };
 
   const getWeatherIcon = (code) => {
-    if (code === 0) return { icon: '☀️', label: 'Clear sky' };
-    if (code <= 2) return { icon: '🌤️', label: 'Partly cloudy' };
-    if (code === 3) return { icon: '☁️', label: 'Overcast' };
-    if (code <= 48) return { icon: '🌫️', label: 'Foggy' };
-    if (code <= 67) return { icon: '🌧️', label: 'Rainy' };
-    if (code <= 77) return { icon: '❄️', label: 'Snowy' };
-    if (code <= 82) return { icon: '🌦️', label: 'Showers' };
-    if (code <= 99) return { icon: '⛈️', label: 'Thunderstorm' };
-    return { icon: '🌡️', label: 'Unknown' };
+    if (code === 0) return { icon: <Sun size={48} className="text-yellow-500" />, label: 'Clear sky' };
+    if (code <= 2) return { icon: <Cloud size={48} className="text-gray-400" />, label: 'Partly cloudy' };
+    if (code === 3) return { icon: <Cloud size={48} className="text-gray-500" />, label: 'Overcast' };
+    if (code <= 48) return { icon: <Wind size={48} className="text-gray-300" />, label: 'Foggy' };
+    if (code <= 67) return { icon: <CloudRain size={48} className="text-blue-500" />, label: 'Rainy' };
+    if (code <= 77) return { icon: <Snowflake size={48} className="text-cyan-400" />, label: 'Snowy' };
+    if (code <= 82) return { icon: <CloudDrizzle size={48} className="text-blue-400" />, label: 'Showers' };
+    if (code <= 99) return { icon: <Zap size={48} className="text-purple-500" />, label: 'Thunderstorm' };
+    return { icon: <Thermometer size={48} className="text-gray-400" />, label: 'Unknown' };
   };
 
   const getRiskColor = (risk) => {
@@ -124,8 +127,8 @@ export default function Weather() {
     const messages = {
       low: 'Low disease risk today. Conditions favorable.',
       medium: 'Moderate disease risk. Monitor your crops.',
-      high: '⚠️ High fungal risk! Consider preventive spray.',
-      very_high: '🚨 Very high disease risk! Spray immediately.'
+      high: 'High fungal risk! Consider preventive spray.',
+      very_high: 'Very high disease risk! Spray immediately.'
     };
     return messages[risk] || messages.low;
   };
@@ -199,7 +202,7 @@ export default function Weather() {
           <div className="text-center md:text-left md:flex md:items-center md:justify-between">
             <div className="flex-1">
               <div className="flex items-center justify-center md:justify-start gap-4 mb-4">
-                <div className="text-6xl">
+                <div className="flex items-center justify-center">
                   {getWeatherIcon(today.weather_code).icon}
                 </div>
                 <div>
@@ -238,6 +241,34 @@ export default function Weather() {
                   </span>
                 </div>
               </div>
+              
+              {/* Additional weather details */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mt-4">
+                <div className="flex items-center gap-2">
+                  <Sunrise className="w-4 h-4 text-orange-400" />
+                  <span className="text-gray-700">
+                    {today.sunrise || '06:00'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Sunset className="w-4 h-4 text-orange-600" />
+                  <span className="text-gray-700">
+                    {today.sunset || '18:30'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Compass className="w-4 h-4 text-blue-400" />
+                  <span className="text-gray-700">
+                    {today.wind_direction || 'N'} {today.wind_speed || 0}km/h
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Gauge className="w-4 h-4 text-purple-500" />
+                  <span className="text-gray-700">
+                    {today.pressure || '1013'} hPa
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </Card>
@@ -266,8 +297,12 @@ export default function Weather() {
               )}
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900">
-                {today.planting_window_available ? '✅ Good Planting Window' : 'No optimal planting window'}
+              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                {today.planting_window_available ? (
+                  <><CheckCircle className="w-5 h-5 text-green-600" /> Good Planting Window</>
+                ) : (
+                  <><Info className="w-5 h-5 text-gray-600" /> No optimal planting window</>
+                )}
               </h3>
               <p className="text-sm text-gray-600 mt-1">
                 {today.planting_window_available 
@@ -303,7 +338,7 @@ export default function Weather() {
                 <p className="text-xs font-medium text-gray-500 mb-2">
                   {isToday ? 'Today' : format(addDays(new Date(), index), 'EEE')}
                 </p>
-                <div className="text-2xl mb-2">{weather.icon}</div>
+                <div className="text-2xl mb-2 flex justify-center">{weather.icon}</div>
                 <p className="text-sm font-bold text-gray-900">
                   {day.temperature_max}°
                 </p>

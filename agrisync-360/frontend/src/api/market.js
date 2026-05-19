@@ -1,22 +1,15 @@
-import api from "./axios";
+import API from './axios'
 
 export const marketAPI = {
-  // Prices
-  getPrices: (params = {}) => api.get("/market/prices", { params }),
-  getPriceHistory: (params = {}) => api.get("/market/history", { params }),
-  
-  // Profitability
-  getProfitability: (params = {}) => api.get("/market/profitability", { params }),
-  
-  // Market info
-  getMarkets: (params = {}) => api.get("/market/markets", { params }),
-  getCrops: () => api.get("/market/crops"),
-  
-  // All prices (auth required)
-  getAllPrices: () => api.get("/market/prices/all"),
-};
+  getPrices: (params) =>
+    API.get('/market/prices', { params }),
 
-// Legacy export for backward compatibility
-export const getMarket = (params = {}) => api.get("/market", { params });
+  getAllPrices: () =>
+    API.get('/market/prices/all'),
 
-export default marketAPI;
+  getPriceHistory: (params) =>
+    API.get('/market/history', { params }),
+
+  getProfitability: (params) =>
+    API.get('/market/profitability', { params }),
+}

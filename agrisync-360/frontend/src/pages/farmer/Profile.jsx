@@ -93,7 +93,7 @@ export default function Profile() {
 
       // Only load farms if profile exists
       if (profileData && profileData.id) {
-        const farmsResp = await farmersAPI.getFarms();
+        const farmsResp = await farmersAPI.listFarms();
         setFarms(farmsResp.data?.data || []);
       } else {
         setFarms([]);
@@ -201,7 +201,7 @@ export default function Profile() {
 
     try {
       await farmersAPI.deleteFarm(farmId);
-      setFarms(prev => prev.filter(farm => f.id !== farmId));
+      setFarms(prev => prev.filter(farm => farm.id !== farmId));
       toast.success('Farm deleted successfully!');
     } catch (err) {
       setError(err.message || 'Failed to delete farm');

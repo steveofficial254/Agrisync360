@@ -20,6 +20,37 @@ def err(error="error", message="Request failed", status=400):
 
 
 # -----------------------------------------------------------------------
+# Current weather endpoint — NO authentication required
+# -----------------------------------------------------------------------
+@weather_bp.get("/current")
+def current_weather():
+    lat = request.args.get("lat")
+    lon = request.args.get("lon")
+
+    if not lat or not lon:
+        return err("validation_error", "Latitude and longitude are required", 400)
+
+    try:
+        lat = float(lat)
+        lon = float(lon)
+    except (ValueError, TypeError):
+        return err("validation_error", "Invalid coordinates", 400)
+
+    # Validate coordinates
+    if not (-90 <= lat <= 90) or not (-180 <= lon <= 180):
+        return err("validation_error", "Coordinates out of range", 400)
+
+    try:
+        weather_data = WeatherService.get_current_weather(lat, lon)
+        if weather_data:
+            return ok(weather_data, "Current weather retrieved successfully")
+        else:
+            return err("service_error", "Unable to fetch weather data", 503)
+    except Exception as e:
+        logger.error(f"Current weather error: {e}")
+        return err("server_error", "Internal server error", 500)
+
+# -----------------------------------------------------------------------
 # Public forecast endpoint — NO authentication required
 # -----------------------------------------------------------------------
 @weather_bp.get("/forecast")

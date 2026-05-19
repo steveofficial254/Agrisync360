@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { advisoryAPI } from '../../api/advisory';
 import { farmersAPI } from '../../api/farmers';
@@ -10,22 +10,26 @@ import Button from '../../components/common/Button';
 import {
   BookOpen, Sprout, Bug, Scissors, Calendar,
   ChevronRight, Search, Filter, Plus, TrendingUp,
-  Droplets, Sun, Wind, AlertTriangle
+  Droplets, Sun, Wind, AlertTriangle, Leaf,
+  Wheat, TreePine
 } from 'lucide-react';
 import { format, addDays, differenceInDays } from 'date-fns';
 import toast from 'react-hot-toast';
 
-// Crop emoji mapping
-const cropEmojis = {
-  maize: '🌽',
-  beans: '🫘',
-  potatoes: '🥔',
-  tomatoes: '🍅',
-  tea: '🍵',
-  wheat: '🌾',
-  cabbage: '🥬',
-  kale: '🥦',
-  onions: '🧅'
+// Crop icon mapping
+const getCropIcon = (cropType) => {
+  const icons = {
+    maize: <Wheat size={24} className="text-yellow-600" />,
+    beans: <Sprout size={24} className="text-green-600" />,
+    potatoes: <Sprout size={24} className="text-amber-600" />,
+    tomatoes: <Leaf size={24} className="text-red-600" />,
+    tea: <Leaf size={24} className="text-green-700" />,
+    wheat: <Wheat size={24} className="text-yellow-700" />,
+    cabbage: <Leaf size={24} className="text-green-500" />,
+    kale: <Leaf size={24} className="text-green-600" />,
+    onions: <Sprout size={24} className="text-yellow-500" />
+  };
+  return icons[cropType] || <Leaf size={24} className="text-green-500" />;
 };
 
 // Growth stages
@@ -55,6 +59,7 @@ export default function Advisory() {
   const [selectedSeason, setSelectedSeason] = useState('all');
   const [allAdvisories, setAllAdvisories] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const fetchingRef = useRef(false);
 
   useEffect(() => {
     // Wait for auth to load before fetching
@@ -70,6 +75,8 @@ export default function Advisory() {
   }, [activeTab, selectedCrop, selectedCounty, selectedSeason]);
 
   const loadMyCrops = async () => {
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
     setLoading(true);
     setError('');
 
@@ -83,7 +90,7 @@ export default function Advisory() {
       // Get farmer's farms and crops
       let farms = [];
       try {
-        const farmsResp = await farmersAPI.getFarms();
+        const farmsResp = await farmersAPI.listFarms();
         farms = farmsResp.data?.data || [];
       } catch (farmError) {
         // Handle case where no farmer profile exists
@@ -97,7 +104,7 @@ export default function Advisory() {
       
       const allCrops = [];
       for (const farm of farms) {
-        const cropsResp = await farmersAPI.getFarmCrops(farm.id);
+        const cropsResp = await farmersAPI.listCrops(farm.id);
         const crops = cropsResp.data?.data || [];
         
         crops.forEach(crop => {
@@ -124,29 +131,48 @@ export default function Advisory() {
       }
     } finally {
       setLoading(false);
+      fetchingRef.current = false;
     }
   };
 
   const loadCropAdvisories = async (crop) => {
+    if (!crop || !crop.crop_type) {
+      console.warn('Crop type is undefined, using default:', crop);
+      // Don't return - handle gracefully with default crop type
+      crop = { ...crop, crop_type: 'maize' }; // Default to maize
+    }
+
     try {
-      const [planting, nutrition, pests, harvest] = await Promise.all([
-        advisoryAPI.getCropAdvisory(crop.crop_type, { advisory_type: 'planting' }),
-        advisoryAPI.getNutritionAdvisory(crop.crop_type, { growth_stage: crop.growth_stage }),
-        advisoryAPI.getPestAdvisory(crop.crop_type),
-        advisoryAPI.getHarvestAdvisory(crop.crop_type)
-      ]);
+      // Get nutrition advisory (enhanced with real data)
+      const nutritionResp = await advisoryAPI.getNutrition(crop.crop_type, crop.growth_stage || 'vegetative');
+      
+      // Get planting calendar (now uses FAO data)
+      const calendarResp = await advisoryAPI.getCalendar(crop.crop_type);
+      
+      // Get pest advisory (enhanced with disease risk)
+      const pestResp = await advisoryAPI.getPests(crop.crop_type);
+      
+      // Get harvest advisory
+      const harvestResp = await advisoryAPI.getHarvest(crop.crop_type);
+
+      // Process and enhance the data
+      const processedData = {
+        nutrition: processAdvisoryData(nutritionResp.data?.data || [], 'nutrition'),
+        calendar: processCalendarData(calendarResp.data?.data || [], crop.crop_type),
+        pests: processAdvisoryData(pestResp.data?.data || [], 'pests'),
+        harvest: processAdvisoryData(harvestResp.data?.data || [], 'harvest')
+      };
 
       setAdvisories(prev => ({
         ...prev,
-        [crop.id]: {
-          planting: planting.data?.data || [],
-          nutrition: nutrition.data?.data || [],
-          pests: pests.data?.data || [],
-          harvest: harvest.data?.data || []
-        }
+        [crop.id]: processedData
       }));
+
+      setExpandedCrop(crop.id);
+      setExpandedCropTab('planting');
     } catch (err) {
       console.error(`Failed to load advisories for ${crop.crop_type}:`, err);
+      setError('Failed to load advisories');
     }
   };
 
@@ -176,7 +202,7 @@ export default function Advisory() {
       if (selectedSeason !== 'all') params.season = selectedSeason;
 
       const resp = await advisoryAPI.getAll(params);
-      setAllAdvisories(resp.data?.data || []);
+      setAllAdvisories(Array.isArray(resp.data?.data) ? resp.data.data : []);
     } catch (err) {
       setError('Failed to load advisories');
     } finally {
@@ -333,11 +359,11 @@ export default function Advisory() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="text-2xl">
-                          {cropEmojis[crop.crop_type] || '🌱'}
+                          {getCropIcon(crop.crop_type) || <Leaf size={24} className="text-green-500" />}
                         </div>
                         <div>
                           <h3 className="font-semibold text-gray-900 capitalize">
-                            {crop.crop_type.replace('_', ' ')}
+                            {crop.crop_type?.replace('_', ' ') || 'Unknown Crop'}
                           </h3>
                           <p className="text-sm text-gray-500">
                             {crop.farm_name} • {crop.area_acres || 1} acres
@@ -532,17 +558,30 @@ export default function Advisory() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Crop</label>
               <div className="flex flex-wrap gap-2">
-                {Object.entries(cropEmojis).map(([crop, emoji]) => (
+                {Object.keys({
+                  maize: 'maize',
+                  beans: 'beans', 
+                  potatoes: 'potatoes',
+                  tomatoes: 'tomatoes',
+                  tea: 'tea',
+                  wheat: 'wheat',
+                  cabbage: 'cabbage',
+                  kale: 'kale',
+                  onions: 'onions'
+                }).map((crop) => (
                   <button
                     key={crop}
                     onClick={() => setSelectedCrop(crop)}
-                    className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1 ${
                       selectedCrop === crop
                         ? 'bg-primary-600 text-white'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
-                    {emoji} {crop.charAt(0).toUpperCase() + crop.slice(1)}
+                    <span className="flex items-center gap-1">
+                      {getCropIcon(crop)}
+                      <span>{crop.charAt(0).toUpperCase() + crop.slice(1)}</span>
+                    </span>
                   </button>
                 ))}
               </div>
@@ -598,7 +637,7 @@ export default function Advisory() {
 
           {/* Advisories List */}
           <div className="space-y-4">
-            {allAdvisories.length === 0 ? (
+            {(!Array.isArray(allAdvisories) || allAdvisories.length === 0) ? (
               <Alert type="info">
                 No advisories found matching your criteria.
               </Alert>
@@ -618,7 +657,9 @@ export default function Advisory() {
                             {advisory.advisory_type}
                           </Badge>
                           <span className="text-sm text-gray-500">
-                            {cropEmojis[advisory.crop]} {advisory.crop}
+                            <span className="inline-flex items-center gap-1">
+                              {getCropIcon(advisory.crop)} {advisory.crop}
+                            </span>
                           </span>
                         </div>
                         <h3 className="font-semibold text-gray-900">{advisory.title}</h3>

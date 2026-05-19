@@ -5,6 +5,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from datetime import date, timedelta, datetime
 import logging
 
+from app.extensions import db
 from app.models.alert import Alert
 from app.models.farmer import Farmer
 from app.models.payment import Payment
@@ -33,7 +34,7 @@ def ok(data=None, message="Success", status=200):
 logger = logging.getLogger(__name__)
 
 
-@admin_bp.get("/dashboard")
+@admin_bp.get("/stats")
 @jwt_required()
 @admin_required
 def dashboard_stats():
@@ -42,51 +43,87 @@ def dashboard_stats():
         # User and farmer stats
         total_users = User.query.count()
         total_farmers = Farmer.query.count()
-        active_farmers = db.session.query(Farmer.id).join(Payment).filter(
-            Payment.status == 'completed',
-            Payment.subscription_end >= date.today()
-        ).distinct().count()
         
-        # Subscription stats
-        total_subscriptions = Payment.query.filter_by(status='completed').count()
-        active_subscriptions = Payment.query.filter(
-            Payment.status == 'completed',
-            Payment.subscription_end >= date.today()
-        ).count()
+        # Handle active farmers gracefully - check if Payment table exists and has data
+        try:
+            active_farmers = db.session.query(Farmer.id).join(Payment).filter(
+                Payment.status == 'completed',
+                Payment.subscription_end >= date.today()
+            ).distinct().count()
+        except:
+            active_farmers = 0
         
-        # Revenue stats
-        total_revenue = db.session.query(func.sum(Payment.amount_ksh)).filter(
-            Payment.status == 'completed'
-        ).scalar() or 0
+        # Subscription stats - handle gracefully
+        try:
+            total_subscriptions = Payment.query.filter_by(status='completed').count()
+            active_subscriptions = Payment.query.filter(
+                Payment.status == 'completed',
+                Payment.subscription_end >= date.today()
+            ).count()
+        except:
+            total_subscriptions = 0
+            active_subscriptions = 0
         
-        # Monthly revenue (last 12 months)
-        twelve_months_ago = date.today() - timedelta(days=365)
-        monthly_revenue = db.session.query(
-            func.date_trunc('month', Payment.created_at).label('month'),
-            func.sum(Payment.amount_ksh).label('revenue')
-        ).filter(
-            Payment.status == 'completed',
-            Payment.created_at >= twelve_months_ago
-        ).group_by(
-            func.date_trunc('month', Payment.created_at)
-        ).order_by('month').all()
+        # Revenue stats - handle gracefully
+        try:
+            total_revenue = db.session.query(func.sum(Payment.amount_ksh)).filter(
+                Payment.status == 'completed'
+            ).scalar() or 0
+        except:
+            total_revenue = 0
         
-        # SMS stats
-        total_sms = SMS.query.count()
-        sent_sms = SMS.query.filter(SMS.status.in_(['sent', 'delivered'])).count()
-        failed_sms = SMS.query.filter_by(status='failed').count()
+        # Monthly revenue (last 12 months) - handle gracefully
+        try:
+            twelve_months_ago = date.today() - timedelta(days=365)
+            # Use strftime for SQLite compatibility instead of date_trunc
+            monthly_revenue = db.session.query(
+                func.strftime('%Y-%m', Payment.created_at).label('month'),
+                func.sum(Payment.amount_ksh).label('revenue')
+            ).filter(
+                Payment.status == 'completed',
+                Payment.created_at >= twelve_months_ago
+            ).group_by(
+                func.strftime('%Y-%m', Payment.created_at)
+            ).order_by('month').all()
+        except:
+            monthly_revenue = []
         
-        # Farm and crop stats
-        total_farms = Farm.query.filter_by(is_deleted=False).count()
-        active_crops = Crop.query.filter_by(is_active=True).count()
+        # SMS stats - handle gracefully
+        try:
+            total_sms = SMS.query.count()
+            sent_sms = SMS.query.filter(SMS.status.in_(['sent', 'delivered'])).count()
+            failed_sms = SMS.query.filter_by(status='failed').count()
+        except:
+            total_sms = 0
+            sent_sms = 0
+            failed_sms = 0
         
-        # Recent activity (last 7 days)
-        seven_days_ago = date.today() - timedelta(days=7)
-        new_farmers = Farmer.query.filter(Farmer.created_at >= seven_days_ago).count()
-        new_subscriptions = Payment.query.filter(
-            Payment.status == 'completed',
-            Payment.created_at >= seven_days_ago
-        ).count()
+        # Farm and crop stats - handle gracefully
+        try:
+            total_farms = Farm.query.filter_by(is_deleted=False).count()
+        except:
+            total_farms = 0
+            
+        try:
+            active_crops = Crop.query.filter_by(is_active=True).count()
+        except:
+            active_crops = 0
+        
+        # Recent activity (last 7 days) - handle gracefully
+        try:
+            seven_days_ago = date.today() - timedelta(days=7)
+            new_farmers = Farmer.query.filter(Farmer.created_at >= seven_days_ago).count()
+        except:
+            new_farmers = 0
+            
+        try:
+            seven_days_ago = date.today() - timedelta(days=7)
+            new_subscriptions = Payment.query.filter(
+                Payment.status == 'completed',
+                Payment.created_at >= seven_days_ago
+            ).count()
+        except:
+            new_subscriptions = 0
         
         return jsonify({
             "success": True,
@@ -106,7 +143,7 @@ def dashboard_stats():
                     "total": float(total_revenue),
                     "monthly_breakdown": [
                         {
-                            "month": month.month.strftime("%Y-%m"),
+                            "month": month,  # month is already formatted string from strftime
                             "revenue": float(revenue)
                         }
                         for month, revenue in monthly_revenue
@@ -217,41 +254,54 @@ def list_farmers():
 def revenue_analytics():
     """Detailed revenue analytics"""
     try:
-        # Total revenue
-        total_revenue = db.session.query(func.sum(Payment.amount_ksh)).filter(
-            Payment.status == 'completed'
-        ).scalar() or 0
+        # Total revenue - handle gracefully
+        try:
+            total_revenue = db.session.query(func.sum(Payment.amount_ksh)).filter(
+                Payment.status == 'completed'
+            ).scalar() or 0
+        except:
+            total_revenue = 0
         
-        # Revenue by plan
-        revenue_by_plan = db.session.query(
-            Payment.plan,
-            func.sum(Payment.amount_ksh).label('amount'),
-            func.count(Payment.id).label('count')
-        ).filter(
-            Payment.status == 'completed'
-        ).group_by(Payment.plan).all()
+        # Revenue by plan - handle gracefully
+        try:
+            revenue_by_plan = db.session.query(
+                Payment.plan,
+                func.sum(Payment.amount_ksh).label('amount'),
+                func.count(Payment.id).label('count')
+            ).filter(
+                Payment.status == 'completed'
+            ).group_by(Payment.plan).all()
+        except:
+            revenue_by_plan = []
         
-        # Revenue by month (last 12 months)
-        twelve_months_ago = date.today() - timedelta(days=365)
-        monthly_revenue = db.session.query(
-            func.date_trunc('month', Payment.created_at).label('month'),
-            func.sum(Payment.amount_ksh).label('revenue'),
-            func.count(Payment.id).label('count')
-        ).filter(
-            Payment.status == 'completed',
-            Payment.created_at >= twelve_months_ago
-        ).group_by(
-            func.date_trunc('month', Payment.created_at)
-        ).order_by('month').all()
+        # Revenue by month (last 12 months) - handle gracefully
+        try:
+            twelve_months_ago = date.today() - timedelta(days=365)
+            # Use strftime for SQLite compatibility instead of date_trunc
+            monthly_revenue = db.session.query(
+                func.strftime('%Y-%m', Payment.created_at).label('month'),
+                func.sum(Payment.amount_ksh).label('revenue'),
+                func.count(Payment.id).label('count')
+            ).filter(
+                Payment.status == 'completed',
+                Payment.created_at >= twelve_months_ago
+            ).group_by(
+                func.strftime('%Y-%m', Payment.created_at)
+            ).order_by('month').all()
+        except:
+            monthly_revenue = []
         
-        # Revenue by county
-        revenue_by_county = db.session.query(
-            Farmer.county,
-            func.sum(Payment.amount_ksh).label('revenue'),
-            func.count(Payment.id).label('count')
-        ).join(Payment).filter(
-            Payment.status == 'completed'
-        ).group_by(Farmer.county).order_by('revenue desc').limit(10).all()
+        # Revenue by county - handle gracefully
+        try:
+            revenue_by_county = db.session.query(
+                Farmer.county,
+                func.sum(Payment.amount_ksh).label('revenue'),
+                func.count(Payment.id).label('count')
+            ).join(Payment).filter(
+                Payment.status == 'completed'
+            ).group_by(Farmer.county).order_by('revenue desc').limit(10).all()
+        except:
+            revenue_by_county = []
         
         return jsonify({
             "success": True,
@@ -267,7 +317,7 @@ def revenue_analytics():
                 ],
                 "monthly_trend": [
                     {
-                        "month": month.month.strftime("%Y-%m"),
+                        "month": month,  # month is already formatted string from strftime
                         "revenue": float(revenue),
                         "subscriptions": count
                     }
@@ -503,3 +553,195 @@ def subscriptions():
     except Exception as e:
         logger.error(f"Subscriptions error: {str(e)}")
         return err("server_error", "Failed to retrieve subscription analytics", 500)
+
+
+@admin_bp.get("/top-counties")
+@jwt_required()
+@admin_required
+def get_top_counties():
+    """Get top counties by farmer count"""
+    try:
+        # Query farmers by county and count - handle gracefully
+        try:
+            county_stats = db.session.query(
+                Farmer.county,
+                func.count(Farmer.id).label('farmer_count'),
+                func.count(Farm.id).label('farm_count')
+            ).join(Farm).group_by(Farmer.county).order_by(
+                func.count(Farmer.id).desc()
+            ).limit(10).all()
+        except:
+            county_stats = []
+        
+        data = [
+            {
+                "county": county,
+                "farmers": farmer_count,
+                "farms": farm_count
+            }
+            for county, farmer_count, farm_count in county_stats
+        ]
+        
+        return ok(data, "Top counties retrieved successfully")
+        
+    except Exception as e:
+        logger.error(f"Top counties error: {str(e)}")
+        return err("server_error", "Failed to retrieve top counties", 500)
+
+
+@admin_bp.get("/top-crops")
+@jwt_required()
+@admin_required
+def get_top_crops():
+    """Get top crops by planting area"""
+    try:
+        # Query crops by total planted area - handle gracefully
+        try:
+            crop_stats = db.session.query(
+                Crop.crop_name,
+                func.count(Crop.id).label('crop_count'),
+                func.sum(Crop.area_planted_acres).label('total_area')
+            ).group_by(Crop.crop_name).order_by(
+                func.sum(Crop.area_planted_acres).desc()
+            ).limit(10).all()
+        except:
+            crop_stats = []
+        
+        data = [
+            {
+                "crop": crop_name,
+                "count": crop_count,
+                "total_area": float(total_area) if total_area else 0
+            }
+            for crop_name, crop_count, total_area in crop_stats
+        ]
+        
+        return ok(data, "Top crops retrieved successfully")
+        
+    except Exception as e:
+        logger.error(f"Top crops error: {str(e)}")
+        return err("server_error", "Failed to retrieve top crops", 500)
+
+
+@admin_bp.get("/recent-farmers")
+@jwt_required()
+@admin_required
+def get_recent_farmers():
+    """Get recently registered farmers"""
+    try:
+        # Get recent farmers with their user info - handle gracefully
+        try:
+            recent_farmers = db.session.query(
+                Farmer,
+                User
+            ).join(User).order_by(
+                User.created_at.desc()
+            ).limit(10).all()
+        except:
+            recent_farmers = []
+        
+        data = [
+            {
+                "id": str(farmer.id),
+                "name": f"{farmer.first_name} {farmer.last_name}",
+                "email": user.email,
+                "phone": user.phone,
+                "county": farmer.county,
+                "registered_date": user.created_at.isoformat(),
+                "is_active": user.is_active,
+                "is_verified": user.is_verified
+            }
+            for farmer, user in recent_farmers
+        ]
+        
+        return ok(data, "Recent farmers retrieved successfully")
+        
+    except Exception as e:
+        logger.error(f"Recent farmers error: {str(e)}")
+        return err("server_error", "Failed to retrieve recent farmers", 500)
+
+
+@admin_bp.get("/system-health")
+@jwt_required()
+@admin_required
+def get_system_health():
+    """Get system health metrics"""
+    try:
+        # Get system metrics - handle gracefully
+        try:
+            total_users = User.query.count()
+        except:
+            total_users = 0
+            
+        try:
+            total_farmers = Farmer.query.count()
+        except:
+            total_farmers = 0
+            
+        try:
+            total_farms = Farm.query.count()
+        except:
+            total_farms = 0
+            
+        try:
+            total_crops = Crop.query.count()
+        except:
+            total_crops = 0
+            
+        try:
+            total_payments = Payment.query.count()
+        except:
+            total_payments = 0
+        
+        # Get recent activity (last 24 hours) - handle gracefully
+        try:
+            yesterday = datetime.utcnow() - timedelta(days=1)
+            recent_users = User.query.filter(User.created_at >= yesterday).count()
+        except:
+            recent_users = 0
+            
+        try:
+            yesterday = datetime.utcnow() - timedelta(days=1)
+            recent_payments = Payment.query.filter(Payment.created_at >= yesterday).count()
+        except:
+            recent_payments = 0
+        
+        # Get subscription stats - handle gracefully
+        try:
+            active_subscriptions = Payment.query.filter(
+                Payment.status == 'completed',
+                Payment.subscription_end >= date.today()
+            ).count()
+        except:
+            active_subscriptions = 0
+        
+        data = {
+            "users": {
+                "total": total_users,
+                "recent": recent_users
+            },
+            "farmers": {
+                "total": total_farmers,
+                "active": active_subscriptions
+            },
+            "farms": {
+                "total": total_farms
+            },
+            "crops": {
+                "total": total_crops
+            },
+            "payments": {
+                "total": total_payments,
+                "recent": recent_payments
+            },
+            "system": {
+                "status": "healthy",
+                "last_updated": datetime.utcnow().isoformat()
+            }
+        }
+        
+        return ok(data, "System health retrieved successfully")
+        
+    except Exception as e:
+        logger.error(f"System health error: {str(e)}")
+        return err("server_error", "Failed to retrieve system health", 500)

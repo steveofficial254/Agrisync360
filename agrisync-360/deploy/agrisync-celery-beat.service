@@ -1,0 +1,21 @@
+[Unit]
+Description=AgriSync 360 Celery Beat
+After=network.target redis.service
+Requires=redis.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/agrisync360/backend
+Environment=FLASK_ENV=production
+ExecStart=/var/www/agrisync360/backend/venv/bin/celery \
+    -A celery_worker.celery beat \
+    --loglevel=info \
+    --logfile=/var/log/agrisync/celery-beat.log \
+    --pidfile=/var/run/agrisync/celery-beat.pid
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

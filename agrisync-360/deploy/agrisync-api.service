@@ -1,0 +1,29 @@
+[Unit]
+Description=AgriSync 360 Flask API
+After=network.target postgresql.service redis.service
+Requires=postgresql.service redis.service
+
+[Service]
+Type=exec
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/agrisync360/backend
+Environment=FLASK_ENV=production
+ExecStart=/var/www/agrisync360/backend/venv/bin/gunicorn \
+    --workers 4 \
+    --worker-class gthread \
+    --threads 2 \
+    --bind 127.0.0.1:5000 \
+    --timeout 60 \
+    --keepalive 5 \
+    --log-level info \
+    --access-logfile /var/log/agrisync/api-access.log \
+    --error-logfile /var/log/agrisync/api-error.log \
+    run:app
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

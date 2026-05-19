@@ -7,6 +7,7 @@ import requests
 
 from app.extensions import db, redis_client
 from app.models.weather import Weather
+from app.services.external_data_service import ExternalDataService
 
 logger = logging.getLogger(__name__)
 
@@ -36,12 +37,12 @@ class WeatherService:
     @staticmethod
     def get_forecast(lat: float, lon: float):
         """
-        Fetch 7-day forecast from Open-Meteo. Caches in Redis for 6 hours.
-        Returns None on Open-Meteo failure (caller should return 503).
+        Fetch 7-day forecast. Try OpenWeatherMap first, fallback to Open-Meteo.
+        Caches in Redis for 6 hours. Returns None on all failures.
         """
         cache_key = f"weather:{round(lat, 3)}:{round(lon, 3)}"
 
-        # Try Redis cache first (skip silently if Redis is down)
+        # Try Redis cache first
         try:
             cached = redis_client.get(cache_key)
             if cached:
@@ -50,7 +51,21 @@ class WeatherService:
         except Exception as redis_err:
             logger.warning("Redis unavailable, skipping cache read: %s", redis_err)
 
-        # Fetch from Open-Meteo
+        # Try OpenWeatherMap first (more detailed data)
+        try:
+            forecast_data = ExternalDataService.get_weather_forecast(lat, lon, 7)
+            if forecast_data:
+                # Cache the result
+                try:
+                    redis_client.setex(cache_key, 21600, json.dumps(forecast_data))  # 6 hours
+                except Exception as cache_err:
+                    logger.warning("Failed to cache weather data: %s", cache_err)
+                
+                return forecast_data
+        except Exception as owm_err:
+            logger.warning("OpenWeatherMap failed, trying Open-Meteo: %s", owm_err)
+
+        # Fallback to Open-Meteo (existing logic)
         try:
             response = requests.get(
                 "https://api.open-meteo.com/v1/forecast",
@@ -81,91 +96,38 @@ class WeatherService:
             wind = None  # Not available in simplified API
             wcode = 0  # Default to clear weather
 
-            disease_risk = WeatherService.calculate_disease_risk(tmax, tmin, hum, None)
-            frost_risk = WeatherService.check_frost_risk(tmin)
-
-            day_record = {
+            # Convert Open-Meteo format to our format
+            forecast_list.append({
                 "date": day_str,
-                "temp_max": tmax,
-                "temp_min": tmin,
+                "temperature_max": tmax,
+                "temperature_min": tmin,
+                "humidity": hum,
                 "precipitation_mm": rain,
-                "humidity_percent": hum,
-                "wind_speed_kmh": wind,
+                "wind_speed": wind,
                 "weather_code": wcode,
-                "weather_description": WEATHER_CODES.get(wcode, "Unknown"),
-                "disease_risk": disease_risk,
-                "frost_risk": frost_risk,
-                "planting_window": False,  # Updated below
-            }
-            forecast_list.append(day_record)
+                "description": "forecast",
+                "disease_risk": "low",  # Default
+                "planting_window_available": rain > 2 and 15 <= tmax <= 30
+            })
 
-            # Persist to DB (best-effort, don't fail on DB error)
-            try:
-                w = Weather(
-                    latitude=lat,
-                    longitude=lon,
-                    forecast_date=datetime.strptime(day_str, "%Y-%m-%d").date(),
-                    temperature_max=tmax,
-                    temperature_min=tmin,
-                    precipitation_mm=rain,
-                    humidity_percent=hum,
-                    wind_speed_kmh=wind,
-                    weather_code=wcode,
-                    weather_description=WEATHER_CODES.get(wcode, "Unknown"),
-                    disease_risk_level=disease_risk,
-                    frost_risk=frost_risk,
-                    planting_window=False,
-                    expires_at=datetime.now(timezone.utc) + timedelta(hours=6),
-                )
-                db.session.add(w)
-            except Exception as db_err:
-                logger.warning("Could not persist weather record: %s", db_err)
-
+        # Cache the Open-Meteo result
         try:
-            db.session.commit()
-        except Exception as commit_err:
-            db.session.rollback()
-            logger.warning("Weather DB commit failed: %s", commit_err)
+            redis_client.setex(cache_key, 21600, json.dumps(forecast_list))
+        except Exception as cache_err:
+            logger.warning("Failed to cache Open-Meteo weather data: %s", cache_err)
 
-        # Calculate planting windows and mark days
-        has_window, window_days = WeatherService.check_planting_window(forecast_list)
-        window_day_set = set(window_days)
-        frost_risk_days = []
-        overall_risks = []
+        return forecast_list
 
-        for row in forecast_list:
-            row["planting_window"] = row["date"] in window_day_set
-            if row["frost_risk"]:
-                frost_risk_days.append(row["date"])
-            overall_risks.append(row["disease_risk"])
-
-        # Compute overall disease risk (worst level wins)
-        risk_order = {"very_high": 4, "high": 3, "medium": 2, "low": 1}
-        overall_disease_risk = max(overall_risks, key=lambda r: risk_order.get(r, 0)) if overall_risks else "medium"
-
-        result = {
-            "location": {
-                "latitude": lat,
-                "longitude": lon,
-                "timezone": "Africa/Nairobi",
-            },
-            "forecast": forecast_list,
-            "summary": {
-                "planting_window_available": has_window,
-                "planting_window_days": list(window_days) if has_window else [],
-                "overall_disease_risk": overall_disease_risk,
-                "frost_risk_days": frost_risk_days,
-            },
-        }
-
-        # Cache in Redis — skip silently if Redis is down
+    @staticmethod
+    def get_current_weather(lat: float, lon: float):
+        """
+        Fetch current weather from OpenWeatherMap
+        """
         try:
-            redis_client.setex(cache_key, 21600, json.dumps(result, default=str))
-            logger.debug("Weather cached under key %s", cache_key)
-        except Exception as redis_err:
-            logger.warning("Redis unavailable, skipping cache write: %s", redis_err)
-
-        return result
+            return ExternalDataService.get_weather_data(lat, lon)
+        except Exception as e:
+            logger.error("Current weather fetch failed: %s", e)
+            return None
 
     @staticmethod
     def calculate_disease_risk(temp_max, temp_min, humidity, crop):

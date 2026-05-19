@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Plus, ArrowLeft, ArrowRight, CheckCircle, AlertCircle, Info } from 'lucide-react';
+import { MapPin, Plus, ArrowLeft, ArrowRight, CheckCircle, AlertCircle, Info, Wheat, Bean, Leaf, Droplets, Tractor, Sprout, TreePine, CircleDot, Sunrise, Sunset } from 'lucide-react';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import Alert from '../../components/common/Alert';
@@ -11,17 +11,17 @@ import { PageLoader } from '../../components/common/Loader';
 import toast from 'react-hot-toast';
 
 const soilTypes = ['clay', 'loam', 'sandy', 'silt', 'peat'];
-const waterSources = ['rain-fed', 'irrigation', 'river', 'borehole', 'none'];
+const waterSources = ['rain', 'irrigation', 'river', 'borehole', 'none'];
 const cropOptions = [
-  { id: 'maize', name: 'Maize', emoji: '🌽' },
-  { id: 'beans', name: 'Beans', emoji: '🫘' },
-  { id: 'potatoes', name: 'Potatoes', emoji: '🥔' },
-  { id: 'tomatoes', name: 'Tomatoes', emoji: '🍅' },
-  { id: 'tea', name: 'Tea', emoji: '🍵' },
-  { id: 'wheat', name: 'Wheat', emoji: '🌾' },
-  { id: 'cabbage', name: 'Cabbage', emoji: '🥬' },
-  { id: 'kale', name: 'Kale', emoji: '🥦' },
-  { id: 'onions', name: 'Onions', emoji: '🧅' }
+  { id: 'maize', name: 'Maize', icon: Wheat },
+  { id: 'beans', name: 'Beans', icon: Bean },
+  { id: 'potatoes', name: 'Potatoes', icon: Leaf },
+  { id: 'tomatoes', name: 'Tomatoes', icon: CircleDot },
+  { id: 'tea', name: 'Tea', icon: TreePine },
+  { id: 'wheat', name: 'Wheat', icon: Wheat },
+  { id: 'cabbage', name: 'Cabbage', icon: Leaf },
+  { id: 'kale', name: 'Kale', icon: Sprout },
+  { id: 'onions', name: 'Onions', icon: CircleDot }
 ];
 
 const kenyanCounties = [
@@ -39,29 +39,48 @@ const kenyanCounties = [
 
 export default function FarmSetup() {
   const navigate = useNavigate();
-  const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
-  // Form data
-  const [farmData, setFarmData] = useState({
-    // Step 1
-    farm_name: '',
-    size_acres: '',
-    soil_type: '',
-    water_source: '',
-    
-    // Step 2
-    latitude: '',
-    longitude: '',
-    county: '',
-    sub_county: '',
-    elevation: '',
-    
-    // Step 3
-    crops: [],
-    skip_crops: false
+
+  // Form data — persist to localStorage so data survives refreshes
+  const [farmData, setFarmData] = useState(() => {
+    try {
+      const saved = localStorage.getItem('farmSetupData');
+      return saved ? JSON.parse(saved) : {
+        farm_name: '', size_acres: '', soil_type: '', water_source: '',
+        latitude: '', longitude: '', county: '', sub_county: '', elevation: '',
+        crops: [], skip_crops: false
+      };
+    } catch {
+      return {
+        farm_name: '', size_acres: '', soil_type: '', water_source: '',
+        latitude: '', longitude: '', county: '', sub_county: '', elevation: '',
+        crops: [], skip_crops: false
+      };
+    }
   });
+
+  useEffect(() => {
+    localStorage.setItem('farmSetupData', JSON.stringify(farmData));
+  }, [farmData]);
+
+  // Persist current step too
+  const [currentStep, setCurrentStep] = useState(() => {
+    try {
+      const saved = localStorage.getItem('farmSetupStep');
+      return saved ? parseInt(saved, 10) : 1;
+    } catch { return 1; }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('farmSetupStep', String(currentStep));
+  }, [currentStep]);
+
+  // Clear persisted data on successful submit
+  const clearPersistedData = () => {
+    localStorage.removeItem('farmSetupData');
+    localStorage.removeItem('farmSetupStep');
+  };
 
   const getLocation = () => {
     if (navigator.geolocation) {
@@ -113,15 +132,11 @@ export default function FarmSetup() {
   };
 
   const nextStep = () => {
-    if (currentStep < 4) {
-      setCurrentStep(currentStep + 1);
-    }
+    setCurrentStep(s => s < 4 ? s + 1 : s);
   };
 
   const prevStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
+    setCurrentStep(s => s > 1 ? s - 1 : s);
   };
 
   const validateStep = () => {
@@ -206,7 +221,7 @@ export default function FarmSetup() {
         water_source: farmData.water_source,
         county: farmData.county,
         sub_county: farmData.sub_county,
-        elevation: farmData.elevation ? parseFloat(farmData.elevation) : null,
+        elevation_meters: farmData.elevation ? parseFloat(farmData.elevation) : null,
         is_primary: true // Make this the primary farm
       };
       
@@ -219,18 +234,16 @@ export default function FarmSetup() {
       console.log('[FarmSetup] Sending farm payload:', farmPayload);
 
       const farmResp = await farmersAPI.createFarm(farmPayload);
-      console.log('[FarmSetup] Farm creation response:', farmResp);
-      
       const farm = farmResp.data?.data;
 
       if (!farm) {
-        console.error('[FarmSetup] No farm data in response:', farmResp);
         throw new Error('Failed to create farm - no data returned');
       }
 
+      clearPersistedData();
+
       // Add crops if not skipped
       if (!farmData.skip_crops && farmData.crops.length > 0) {
-        console.log('[FarmSetup] Creating farm with crops:', farmData.crops);
         try {
           for (const crop of farmData.crops) {
             const cropPayload = {
@@ -240,11 +253,8 @@ export default function FarmSetup() {
               area_planted_acres: parseFloat(crop.area_acres),
               days_to_maturity: getDaysToMaturity(crop.crop_type)
             };
-            
-            console.log('[FarmSetup] Adding crop:', cropPayload);
             await farmersAPI.addCrop(farm.id, cropPayload);
           }
-          
           toast.success('Farm and crops created successfully!');
         } catch (cropErr) {
           console.error('Crop creation error:', cropErr);
@@ -413,7 +423,7 @@ export default function FarmSetup() {
           <div className="space-y-4">
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
               <p className="text-sm text-blue-800">
-                <strong>📍 Automatic Location Detection</strong><br />
+                <strong className="flex items-center gap-1.5"><MapPin className="w-4 h-4" /> Automatic Location Detection</strong><br />
                 Coordinates will be automatically generated based on your county and sub-county selection.
                 You can also use GPS detection or enter coordinates manually.
               </p>
@@ -527,7 +537,9 @@ export default function FarmSetup() {
                               : 'border-gray-200 hover:border-gray-300'
                           }`}
                         >
-                          <div className="text-2xl mb-1">{crop.emoji}</div>
+                          <div className="mb-1 flex justify-center">
+                            <crop.icon className="w-6 h-6 text-primary-600" />
+                          </div>
                           <p className="text-sm font-medium text-gray-900">{crop.name}</p>
                         </button>
                       );
@@ -541,7 +553,6 @@ export default function FarmSetup() {
                   return (
                     <div key={crop.crop_type} className="p-4 border border-gray-200 rounded-lg">
                       <div className="flex items-center gap-2 mb-3">
-                        <span className="text-2xl">{cropInfo.emoji}</span>
                         <h3 className="font-semibold text-gray-900">{cropInfo.name}</h3>
                       </div>
                       
@@ -612,7 +623,7 @@ export default function FarmSetup() {
                     return (
                       <div key={crop.crop_type} className="flex items-center justify-between text-sm">
                         <div className="flex items-center gap-2">
-                          <span>{cropInfo.emoji}</span>
+                          <cropInfo.icon className="w-4 h-4 text-primary-600" />
                           <span className="font-medium">{cropInfo.name}</span>
                         </div>
                         <div className="text-gray-500">

@@ -1,0 +1,24 @@
+[Unit]
+Description=AgriSync 360 Celery Worker
+After=network.target redis.service
+Requires=redis.service
+
+[Service]
+Type=forking
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/agrisync360/backend
+Environment=FLASK_ENV=production
+ExecStart=/var/www/agrisync360/backend/venv/bin/celery \
+    -A celery_worker.celery worker \
+    --loglevel=info \
+    --concurrency=4 \
+    --logfile=/var/log/agrisync/celery-worker.log \
+    --pidfile=/var/run/agrisync/celery-worker.pid \
+    --detach
+ExecStop=/bin/kill -TERM $MAINPID
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -20,7 +20,8 @@ import {
   Phone,
   Mail,
   ChevronRight,
-  Star
+  Star,
+  User
 } from 'lucide-react';
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
@@ -32,6 +33,21 @@ export default function Landing() {
   const [email, setEmail] = useState('');
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [scrollY, setScrollY] = useState(0);
+  const [morphIndex, setMorphIndex] = useState(0);
+  const [bgGradient, setBgGradient] = useState(0);
+  const [particles, setParticles] = useState([]);
+
+  // Generate particles for dramatic effect
+  useEffect(() => {
+    const newParticles = Array.from({ length: 20 }, (_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      size: Math.random() * 4 + 2,
+      speed: Math.random() * 2 + 1
+    }));
+    setParticles(newParticles);
+  }, [morphIndex]);
 
   // Add scroll listener for animations
   useEffect(() => {
@@ -42,6 +58,33 @@ export default function Landing() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Strong morphing animations
+  useEffect(() => {
+    const morphInterval = setInterval(() => {
+      setMorphIndex((prev) => (prev + 1) % 6);
+      setBgGradient((prev) => (prev + 1) % 5);
+    }, 2000); // Faster - every 2 seconds
+
+    return () => clearInterval(morphInterval);
+  }, []);
+
+  const morphTexts = [
+    '🌾 Revolutionizing Kenyan Agriculture',
+    '📊 Data-Driven Farming Intelligence',
+    '🤖 AI-Powered Crop Management', 
+    '🌱 Sustainable Harvest Solutions',
+    '📈 Profit Maximization Platform',
+    '🚀 Next-Gen Farming Technology'
+  ];
+
+  const gradients = [
+    'from-green-50 via-emerald-100 to-blue-50',
+    'from-blue-50 via-purple-100 to-pink-50',
+    'from-purple-50 via-red-100 to-orange-50',
+    'from-orange-50 via-yellow-100 to-green-50',
+    'from-indigo-50 via-blue-100 to-purple-50'
+  ];
+
   const features = [
     {
       icon: Cloud,
@@ -49,7 +92,7 @@ export default function Landing() {
       description: 'Get accurate 7-day weather forecasts with disease risk alerts and planting recommendations powered by advanced meteorological data.',
       color: 'text-blue-600',
       gradient: 'from-blue-50 to-blue-100',
-      image: 'https://images.unsplash.com/photo-1592210453952-02f8016a3b18?w=800&q=80',
+      image: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&q=80',
       imageAlt: 'Kenyan farm with weather monitoring equipment',
       rating: 4.8,
       reviews: 1247
@@ -60,7 +103,7 @@ export default function Landing() {
       description: 'Expert advice on planting, nutrition, and pest control for optimal yields from agricultural specialists.',
       color: 'text-green-600',
       gradient: 'from-green-50 to-green-100',
-      image: 'https://images.unsplash.com/photo-1574944901202-e4775fcc4871?w=800&q=80',
+      image: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&q=80',
       imageAlt: 'Agricultural expert advising on crop management',
       rating: 4.6,
       reviews: 892
@@ -71,7 +114,7 @@ export default function Landing() {
       description: 'Real-time market prices for major Kenyan crops and livestock to help you make informed selling decisions.',
       color: 'text-emerald-600',
       gradient: 'from-emerald-50 to-emerald-100',
-      image: 'https://images.unsplash.com/photo-1611267214479-990a18e8a0a6?w=800&q=80',
+      image: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&q=80',
       imageAlt: 'Kenyan market with fresh produce for sale',
       rating: 4.9,
       reviews: 2156
@@ -82,7 +125,7 @@ export default function Landing() {
       description: 'Connect with thousands of Kenyan farmers, share experiences, and learn from agricultural experts.',
       color: 'text-purple-600',
       gradient: 'from-purple-50 to-purple-100',
-      image: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&q=80',
+      image: 'https://images.unsplash.com/photo-1605000792413-7e0d4c43b0c?w=800&q=80',
       imageAlt: 'Kenyan farmers community meeting and sharing knowledge',
       rating: 4.7,
       reviews: 1563
@@ -93,7 +136,7 @@ export default function Landing() {
       description: 'Access affordable crop insurance options to protect your investment against weather and market risks.',
       color: 'text-red-600',
       gradient: 'from-red-50 to-red-100',
-      image: 'https://images.unsplash.com/photo-1454165208092-cb6306d977c0?w=800&q=80',
+      image: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&q=80',
       imageAlt: 'Protected crops with insurance coverage',
       rating: 4.5,
       reviews: 734
@@ -104,7 +147,7 @@ export default function Landing() {
       description: 'Access all features without internet using *384*360# on any mobile phone, anywhere in Kenya.',
       color: 'text-orange-600',
       gradient: 'from-orange-50 to-orange-100',
-      image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800&q=80',
+      image: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&q=80',
       imageAlt: 'Mobile phone showing USSD service interface',
       rating: 4.4,
       reviews: 567
@@ -290,15 +333,66 @@ export default function Landing() {
       </header>
 
       {/* Hero Section */}
-      <section className="relative py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-green-50 to-emerald-50 overflow-hidden">
-        <div className="max-w-7xl mx-auto">
+      <section key={`hero-${bgGradient}`} className={`relative py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br ${gradients[bgGradient]} overflow-hidden transition-all duration-3000 ease-in-out`}>
+        {/* Dramatic floating morphing elements */}
+        <div key="float-1" className="absolute top-10 left-10 w-32 h-32 bg-gradient-to-br from-green-200 to-emerald-300 rounded-full opacity-30 animate-pulse transition-all duration-2000 ease-in-out shadow-2xl"
+             style={{ 
+               transform: `translate(${Math.sin(morphIndex * 0.3) * 40}px, ${Math.cos(morphIndex * 0.3) * 40}px) scale(${1 + Math.sin(morphIndex * 0.2) * 0.2})`,
+               animation: `float ${2 + morphIndex * 0.5}s ease-in-out infinite`
+             }}></div>
+        <div key="float-2" className="absolute top-20 right-16 w-24 h-24 bg-gradient-to-br from-blue-200 to-purple-300 rounded-full opacity-25 animate-pulse transition-all duration-2000 ease-in-out shadow-2xl"
+             style={{ 
+               transform: `translate(${Math.cos(morphIndex * 0.4) * 30}px, ${Math.sin(morphIndex * 0.4) * 30}px) scale(${1 + Math.cos(morphIndex * 0.3) * 0.3})`,
+               animation: `float ${3 + morphIndex * 0.4}s ease-in-out infinite`
+             }}></div>
+        <div key="float-3" className="absolute bottom-32 left-20 w-28 h-28 bg-gradient-to-br from-purple-200 to-pink-300 rounded-full opacity-25 animate-pulse transition-all duration-2000 ease-in-out shadow-2xl"
+             style={{ 
+               transform: `translate(${Math.sin(morphIndex * 0.5) * 35}px, ${Math.cos(morphIndex * 0.5) * 35}px) scale(${1 + Math.sin(morphIndex * 0.4) * 0.25})`,
+               animation: `float ${4 + morphIndex * 0.3}s ease-in-out infinite`
+             }}></div>
+        <div key="float-4" className="absolute top-1/2 left-1/3 w-20 h-20 bg-gradient-to-br from-orange-200 to-red-300 rounded-full opacity-20 animate-spin transition-all duration-2000 ease-in-out shadow-2xl"
+             style={{ 
+               transform: `translate(${Math.cos(morphIndex * 0.6) * 25}px, ${Math.sin(morphIndex * 0.6) * 25}px) rotate(${morphIndex * 45}deg)`,
+               animation: `spin ${5 + morphIndex * 0.2}s linear infinite`
+             }}></div>
+        <div key="float-5" className="absolute bottom-40 right-32 w-16 h-16 bg-gradient-to-br from-yellow-200 to-green-300 rounded-full opacity-20 animate-bounce transition-all duration-2000 ease-in-out shadow-2xl"
+             style={{ 
+               transform: `translate(${Math.sin(morphIndex * 0.7) * 20}px, ${Math.cos(morphIndex * 0.7) * 20}px)`,
+               animation: `bounce ${2 + morphIndex * 0.3}s ease-in-out infinite`
+             }}></div>
+        
+        {/* Particle Effects */}
+        {particles.map((particle) => (
+          <div
+            key={particle.id}
+            className="absolute w-1 h-1 bg-white rounded-full opacity-60"
+            style={{
+              left: `${particle.x}%`,
+              top: `${particle.y}%`,
+              width: `${particle.size}px`,
+              height: `${particle.size}px`,
+              boxShadow: '0 0 10px rgba(255, 255, 255, 0.8)',
+              animation: `particle-float ${particle.speed}s ease-in-out infinite`,
+              transform: `translate(${Math.sin(morphIndex * 0.1 + particle.id) * 30}px, ${Math.cos(morphIndex * 0.1 + particle.id) * 30}px)`
+            }}
+          />
+        ))}
+        
+        <div className="max-w-7xl mx-auto relative z-10">
           <div className={`text-center transform transition-all duration-700 delay-100 ${scrollY > 50 ? 'translate-y-4 opacity-90' : 'translate-y-0 opacity-100'}`}>
             <Badge variant="primary" size="lg" className="mb-4">
             
             </Badge>
             <h1 className={`text-5xl md:text-7xl font-bold text-gray-900 mb-6 font-display leading-tight transform transition-all duration-700 delay-200 ${scrollY > 100 ? 'translate-y-4 opacity-90' : 'translate-y-0 opacity-100'}`}>
               Transform Your Farm with
-              <span className="block text-green-600"> Data-Driven Agriculture</span>
+              <span key={morphIndex} className="block bg-gradient-to-r from-green-600 via-emerald-500 to-blue-600 bg-clip-text text-transparent transition-all duration-2000 ease-in-out font-black"
+                  style={{
+                    textShadow: '0 0 30px rgba(16, 185, 129, 0.3)',
+                    animation: `glow ${2 + morphIndex * 0.3}s ease-in-out infinite`,
+                    transform: `scale(${1 + Math.sin(morphIndex * 0.2) * 0.1})`
+                  }}>
+                {morphTexts[morphIndex]}
+              </span>
             </h1>
             <p className={`text-xl text-gray-600 mb-8 max-w-4xl mx-auto leading-relaxed transform transition-all duration-700 delay-300 ${scrollY > 150 ? 'translate-y-4 opacity-90' : 'translate-y-0 opacity-100'}`}>
               AgriSync 360 empowers Kenyan farmers with AI-powered weather forecasts, 
@@ -310,7 +404,7 @@ export default function Landing() {
                 onClick={() => navigate('/register')}
                 variant="primary"
                 size="xl"
-                className="text-lg px-8 py-4 rounded-xl font-semibold"
+                className="text-lg px-8 py-4 rounded-xl font-semibold bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 transform hover:scale-105 transition-all duration-300 shadow-2xl"
               >
                 Get Started Free
                 <ArrowRight className="ml-2 h-5 w-5" />
@@ -319,9 +413,10 @@ export default function Landing() {
                 onClick={() => navigate('/login')}
                 variant="outline"
                 size="xl"
-                className="text-lg px-8 py-4 rounded-xl font-semibold"
+                className="text-lg px-8 py-4 rounded-xl font-semibold border-2 border-green-600 text-green-600 hover:bg-green-50 transform hover:scale-105 transition-all duration-300"
               >
                 Sign In
+                <User className="ml-2 h-5 w-5" />
               </Button>
             </div>
             <div className="flex items-center justify-center gap-6 text-sm text-gray-500">

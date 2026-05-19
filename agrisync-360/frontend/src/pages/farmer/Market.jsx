@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { marketAPI } from '../../api/market';
 import { farmersAPI } from '../../api/farmers';
@@ -24,6 +25,7 @@ import { format, subMonths } from 'date-fns';
 import toast from 'react-hot-toast';
 
 export default function Market() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -55,6 +57,8 @@ export default function Market() {
   const [profitCounty, setProfitCounty] = useState('nakuru');
   const [profitData, setProfitData] = useState(null);
   const [calculating, setCalculating] = useState(false);
+  const fetchingRef = useRef(false);
+  const historyFetchingRef = useRef(false);
 
   const counties = [
     'all', 'nakuru', 'kiambu', 'kisumu', 'mombasa', 'eldoret',
@@ -92,6 +96,8 @@ export default function Market() {
   }, []);
 
   const loadCurrentPrices = async () => {
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
     setLoading(true);
     setError('');
 
@@ -137,10 +143,13 @@ export default function Market() {
       console.error('Market error:', err);
     } finally {
       setLoading(false);
+      fetchingRef.current = false;
     }
   };
 
   const loadPriceHistory = async () => {
+    if (historyFetchingRef.current) return;
+    historyFetchingRef.current = true;
     setLoading(true);
     setError('');
 
@@ -173,6 +182,7 @@ export default function Market() {
       setError('Failed to load price history');
     } finally {
       setLoading(false);
+      historyFetchingRef.current = false;
     }
   };
 
@@ -504,7 +514,6 @@ export default function Market() {
       {/* Error Alert - Always visible when error exists */}
       {error && (
         <>
-          {console.log('[Market] Rendering error alert:', error)}
           <div 
             className="fixed top-4 right-4 z-50 max-w-md bg-red-50 border-2 border-red-500 rounded-lg p-4 shadow-lg"
             style={{ 
@@ -886,53 +895,7 @@ export default function Market() {
         </div>
       )}
       
-      {/* Enhanced Tabs Section */}
-      <div className="bg-white rounded-xl shadow-lg border border-gray-100">
-        <div className="border-b border-gray-200">
-          <nav className="flex space-x-8 px-6" aria-label="Tabs">
-            {['current-prices', 'price-history', 'profitability'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                  activeTab === tab
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                {tab === 'current-prices' && (
-                  <span className="flex items-center">
-                    <BarChart3 className="w-4 h-4 mr-2" />
-                    Current Prices
-                  </span>
-                )}
-                {tab === 'price-history' && (
-                  <span className="flex items-center">
-                    <Calendar className="w-4 h-4 mr-2" />
-                    Price History
-                  </span>
-                )}
-                {tab === 'profitability' && (
-                  <span className="flex items-center">
-                    <Calculator className="w-4 h-4 mr-2" />
-                    Profitability
-                  </span>
-                )}
-              </button>
-            ))}
-          </nav>
-        </div>
-
-        <div className="p-6">
-          {/* Tab content would go here - keeping existing implementation */}
-          <div className="text-center py-12">
-            <Sparkles className="w-12 h-12 text-blue-500 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Market Intelligence Dashboard</h3>
-            <p className="text-gray-600">Advanced market analytics and insights coming soon</p>
           </div>
-        </div>
-      </div>
-    </div>
   </div>
   );
 }

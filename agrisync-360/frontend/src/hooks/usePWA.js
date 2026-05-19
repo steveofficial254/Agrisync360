@@ -34,7 +34,7 @@ export function usePWA() {
 
     // PWA install prompt
     const handleBeforeInstallPrompt = (e) => {
-      e.preventDefault()
+      // Save the event so we can trigger prompt() later via installApp()
       setDeferredPrompt(e)
       setIsInstallable(true)
       console.log('[PWA] Install prompt available')

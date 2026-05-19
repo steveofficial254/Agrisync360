@@ -75,12 +75,12 @@ export default function AdminDashboard() {
         adminAPI.getSystemHealth()
       ]);
 
-      setStats(statsResp.data);
-      setRevenueData(revenueResp.data);
-      setTopCounties(countiesResp.data);
-      setTopCrops(cropsResp.data);
-      setRecentFarmers(farmersResp.data);
-      setSystemHealth(healthResp.data);
+      setStats(statsResp.data || {});
+      setRevenueData(revenueResp.data || {});
+      setTopCounties(Array.isArray(countiesResp.data) ? countiesResp.data : []);
+      setTopCrops(Array.isArray(cropsResp.data) ? cropsResp.data : []);
+      setRecentFarmers(Array.isArray(farmersResp.data) ? farmersResp.data : []);
+      setSystemHealth(healthResp.data || {});
     } catch (err) {
       setError('Failed to load dashboard data');
       console.error('Admin dashboard error:', err);
@@ -233,7 +233,7 @@ export default function AdminDashboard() {
           <Card>
             <h3 className="text-md font-semibold text-gray-900 mb-3">Top 5 Counties</h3>
             <div className="space-y-2">
-              {topCounties.map((county, index) => (
+              {Array.isArray(topCounties) && topCounties.map((county, index) => (
                 <div key={index} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <span className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-xs font-medium">
@@ -254,7 +254,7 @@ export default function AdminDashboard() {
           <Card>
             <h3 className="text-md font-semibold text-gray-900 mb-3">Top 5 Crops</h3>
             <div className="space-y-2">
-              {topCrops.map((crop, index) => (
+              {Array.isArray(topCrops) && topCrops.map((crop, index) => (
                 <div key={index} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <span className="w-8 h-8 bg-earth-100 rounded-full flex items-center justify-center text-xs font-medium">
@@ -287,70 +287,53 @@ export default function AdminDashboard() {
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
-            <thead>
+            <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Name
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Email
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Phone
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   County
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Plan
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Joined
-                </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {recentFarmers.map((farmer) => (
-                <tr key={farmer.id}>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <p className="font-medium text-gray-900">{farmer.name}</p>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <p className="text-gray-500">{farmer.phone}</p>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <p className="text-gray-900 capitalize">{farmer.county}</p>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <Badge variant={farmer.plan === 'pro' ? 'pro' : farmer.plan === 'basic' ? 'basic' : 'free'}>
-                      {farmer.plan?.toUpperCase() || 'FREE'}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <p className="text-gray-500">
-                      {farmer.joined_at ? format(new Date(farmer.joined_at), 'MMM d, yyyy') : 'Unknown'}
-                    </p>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {/* TODO: View farmer details */}}
-                      >
-                        View
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {/* TODO: Send individual SMS */}}
-                      >
-                        SMS
-                      </Button>
-                    </div>
+              {Array.isArray(recentFarmers) && recentFarmers.length > 0 ? (
+                recentFarmers.map((farmer) => (
+                  <tr key={farmer.id}>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <p className="font-medium text-gray-900">{farmer.name}</p>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <p className="text-gray-500">{farmer.email}</p>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <p className="text-gray-500">{farmer.phone}</p>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <p className="text-gray-900 capitalize">{farmer.county}</p>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <p className="text-gray-500">{farmer.status}</p>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="px-4 py-3 whitespace-nowrap text-center">
+                    <p className="text-gray-500">No recent farmers found.</p>
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>

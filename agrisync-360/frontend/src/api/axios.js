@@ -68,9 +68,9 @@ API.interceptors.response.use(
               localStorage.setItem('access_token', access_token);
               
               // Update original request with new token
-              originalRequest.config.headers.Authorization = `Bearer ${access_token}`;
-              
-              return API(originalRequest.config);
+              originalRequest.headers.Authorization = `Bearer ${access_token}`;
+
+              return API(originalRequest);
             }
           } catch (refreshError) {
             console.error('[API] Token refresh failed:', refreshError);

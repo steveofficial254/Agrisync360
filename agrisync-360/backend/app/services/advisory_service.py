@@ -1,6 +1,7 @@
 from datetime import timedelta, date
 from app.models.advisory import Advisory
 from app.extensions import db
+from app.services.external_data_service import ExternalDataService
 import logging
 
 logger = logging.getLogger(__name__)
@@ -42,12 +43,31 @@ class AdvisoryService:
 
     @staticmethod
     def get_planting_calendar(crop_name, planting_date, county=None):
-        """Generate a 12-week planting calendar for a crop"""
+        """Generate a 12-week planting calendar for a crop using FAO data"""
         try:
             if not isinstance(planting_date, date):
                 planting_date = date.fromisoformat(planting_date)
             
-            # Crop-specific calendar templates
+            # Try to get real data from FAO API
+            country = county or "Kenya"  # Default to Kenya
+            try:
+                fao_calendar = ExternalDataService.get_crop_calendar(country, crop_name)
+                if fao_calendar:
+                    # Convert FAO data to our format
+                    calendar_data = []
+                    for week, activity in enumerate(fao_calendar[:12], 1):
+                        calendar_data.append({
+                            "week": week,
+                            "activity": activity.get("activity", f"Week {week}"),
+                            "task": activity.get("description", "Regular crop management"),
+                            "inputs": activity.get("inputs", "Standard inputs"),
+                            "notes": activity.get("notes", "")
+                        })
+                    return calendar_data
+            except Exception as fao_err:
+                logger.warning(f"FAO calendar fetch failed, using fallback: {fao_err}")
+            
+            # Fallback to hardcoded templates if FAO fails
             calendars = {
                 'maize': [
                     (1, "Land preparation", "Soil moisture test", "Well-rotted manure, DAP fertilizer"),

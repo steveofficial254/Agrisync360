@@ -1,12 +1,26 @@
-import api from "./axios";
+import API from './axios'
 
 export const paymentsAPI = {
-  getPlans: () => api.get("/payments/plans"),
-  getSubscription: () => api.get("/payments/subscription"),
-  subscribe: (data) => api.post("/payments/subscribe", data),
-  upgrade: (data) => api.post("/payments/upgrade", data),
-  getPaymentStatus: (checkoutId) => api.get(`/payments/status/${checkoutId}`),
-  getPaymentHistory: (params = {}) => api.get("/payments/history", { params }),
-};
+  getPlans: () =>
+    API.get('/payments/plans'),
 
-export default paymentsAPI;
+  // payload = { plan: 'basic_monthly', phone: '07XXXXXXXX' }
+  subscribe: (payload) =>
+    API.post('/payments/subscribe', payload),
+
+  upgrade: (plan) =>
+    API.post('/payments/upgrade', { plan }),
+
+  getSubscription: () =>
+    API.get('/payments/subscription'),
+
+  getPaymentStatus: (checkoutId) =>
+    API.get(`/payments/status/${checkoutId}`),
+
+  getPaymentHistory: () =>
+    API.get('/payments/history'),
+
+  // DEV ONLY — simulate M-Pesa callback completing a pending payment
+  activateDev: (checkoutRequestId) =>
+    API.post('/payments/activate-dev', { checkout_request_id: checkoutRequestId }),
+}
