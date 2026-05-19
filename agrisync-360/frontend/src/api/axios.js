@@ -1,118 +1,65 @@
-/**
- * AgriSync 360 — Axios API Client
- * Handles JWT authentication automatically
- */
 import axios from 'axios'
 
-// Create axios instance
 const API = axios.create({
   baseURL: '/api',
   timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
 })
 
-// ============================================================
-// REQUEST INTERCEPTOR
-// Attaches JWT token to every request automatically
-// ============================================================
+// Attach JWT token to every request
 API.interceptors.request.use(
   (config) => {
-    // Get token from localStorage
     const token = localStorage.getItem('access_token')
-    
-    // Attach token if it exists
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
-    
     return config
   },
-  (error) => {
-    console.error('[API] Request error:', error)
-    return Promise.reject(error)
-  }
+  (error) => Promise.reject(error)
 )
 
-// ============================================================
-// RESPONSE INTERCEPTOR
-// Handles 401 errors and token refresh
-// ============================================================
+// Handle 401 responses
 API.interceptors.response.use(
-  (response) => {
-    // Return successful responses as-is
-    return response
-  },
+  (response) => response,
   async (error) => {
-    const originalRequest = error.config
+    const original = error.config
     
-    // Handle 401 Unauthorized
-    if (error.response?.status === 401) {
-      // Don't retry auth endpoints (prevents infinite loops)
-      const isAuthEndpoint = originalRequest.url?.includes('/auth/')
+    if (error.response?.status === 401 &&
+        !original._retry &&
+        !original.url?.includes('/auth/')) {
+      original._retry = true
       
-      if (!isAuthEndpoint && !originalRequest._retry) {
-        originalRequest._retry = true
-        
-        // Try to refresh token
-        const refreshToken = localStorage.getItem('refresh_token')
-        
-        if (refreshToken) {
-          try {
-            const refreshResponse = await API.post('/auth/refresh', {});
-            
-            const { access_token } = refreshResponse.data.data;
-            
-            if (access_token) {
-              localStorage.setItem('access_token', access_token);
-              
-              // Update original request with new token
-              originalRequest.headers.Authorization = `Bearer ${access_token}`;
-
-              return API(originalRequest);
-            }
-          } catch (refreshError) {
-            console.error('[API] Token refresh failed:', refreshError);
-            
-            // Clear tokens and redirect to login
-            localStorage.removeItem('access_token');
-            localStorage.removeItem('refresh_token');
-            localStorage.removeItem('user_data');
-            
-            // Only redirect if not already on login page
-            if (window.location.pathname !== '/login') {
-              window.location.href = '/login';
-            }
-            
-            return Promise.reject(refreshError);
+      const refreshToken = localStorage.getItem('refresh_token')
+      if (refreshToken) {
+        try {
+          const res = await axios.post('/api/auth/refresh', {}, {
+            headers: { Authorization: `Bearer ${refreshToken}` }
+          })
+          const newToken = res.data?.data?.access_token
+          if (newToken) {
+            localStorage.setItem('access_token', newToken)
+            original.headers.Authorization = `Bearer ${newToken}`
+            return API(original)
           }
+        } catch (e) {
+          // Refresh failed
         }
-        
-        // Refresh failed — clear auth and redirect to login
-        console.warn('[API] Session expired — redirecting to login')
-        localStorage.removeItem('access_token')
-        localStorage.removeItem('refresh_token')
-        localStorage.removeItem('user')
-        
-        // Redirect to login
-        if (window.location.pathname !== '/login') {
-          window.location.href = '/login'
-        }
+      }
+      
+      // Session expired
+      localStorage.clear()
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login'
       }
     }
     
-    // Format error for consistent handling in components
-    const formattedError = {
+    return Promise.reject({
       status: error.response?.status,
-      message: error.response?.data?.message || 
-               error.message || 
-               'Request failed',
-      error: error.response?.data?.error || 'UNKNOWN_ERROR',
+      message: error.response?.data?.message ||
+               error.message || 'Request failed',
+      error: error.response?.data?.error || 'UNKNOWN',
       success: false,
-    }
-    
-    return Promise.reject(formattedError)
+    })
   }
 )
 

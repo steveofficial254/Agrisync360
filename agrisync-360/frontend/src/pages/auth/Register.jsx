@@ -147,7 +147,12 @@ export default function Register() {
       const data = response.data;
       
       if (data.success) {
-        setSuccess('Registration successful! Check your phone for OTP code.');
+        let successMsg = 'Registration successful! Check your phone for OTP code.';
+        if (data.data?.otp) {
+          successMsg += ` (Dev OTP: ${data.data.otp})`;
+          toast.success(`Dev OTP: ${data.data.otp}`, { duration: 10000 });
+        }
+        setSuccess(successMsg);
         // Store user data for OTP verification
         localStorage.setItem('registration_phone', formData.phone);
         

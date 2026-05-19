@@ -10,9 +10,12 @@ import random
 from datetime import date, timedelta
 from flask import Flask
 from sqlalchemy import text
-from app import create_app, db, logger
+from app import create_app, db
+import logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 from app.models.advisory import Advisory
-from app.models.market import MarketPrice
+from app.models.market import Market
 from app.models.user import User
 
 # ============================================================
@@ -710,6 +713,7 @@ SMS_ADVISORIES = [
 
 
 def run():
+    app = create_app('development')
     with app.app_context():
         logger.info("="*60)
         logger.info("AgriSync 360 — Content Population Starting")
@@ -726,7 +730,7 @@ def run():
 
         # 2. Populate market prices (30 days)
         logger.info("\n2. Populating market prices...")
-        MarketPrice.query.delete()
+        Market.query.delete()
         
         count = 0
         today = date.today()
@@ -744,7 +748,7 @@ def run():
                     variation = random.uniform(-0.05, 0.05)
                     price = round(base_price * (1 + variation), 2)
                     
-                    mp = MarketPrice(
+                    mp = Market(
                         crop_name=crop,
                         county=county.replace('_', ' ').title(),
                         market_name=market,
@@ -818,15 +822,11 @@ def run():
         logger.info(f"   ✅ Admin accounts ready")
 
         # 4. Summary
-        from app.models.advisory import Advisory
-        from app.models.market import MarketPrice
-        from app.models.user import User
-        
         logger.info("\n" + "="*60)
         logger.info("CONTENT POPULATION COMPLETE")
         logger.info("="*60)
         logger.info(f"Advisories:     {Advisory.query.count()}")
-        logger.info(f"Market Prices:  {MarketPrice.query.count()}")
+        logger.info(f"Market Prices:  {Market.query.count()}")
         logger.info(f"Total Users:    {User.query.count()}")
         logger.info("="*60)
         logger.info("\nAdmin Credentials:")

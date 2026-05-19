@@ -26,6 +26,10 @@ export default function DashboardLayout() {
   const navigate = useNavigate();
   const { user, logout, isFarmer, isAdmin, isAgroDealer, isNGO } = useAuth();
 
+  const handleLogout = async () => {
+    await logout();
+  };
+
   const farmerNav = [
     { name: 'Dashboard', href: '/dashboard', icon: Home, label: 'Nyumbani', labelEn: 'Home' },
     { name: 'Weather', href: '/weather', icon: Cloud, label: 'Hewa', labelEn: 'Weather' },
@@ -68,10 +72,6 @@ export default function DashboardLayout() {
   };
 
   const navigation = getNavigation();
-
-  const handleLogout = async () => {
-    await logout();
-  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex">

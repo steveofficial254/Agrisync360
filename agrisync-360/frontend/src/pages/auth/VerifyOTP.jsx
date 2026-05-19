@@ -110,10 +110,12 @@ export default function VerifyOTP() {
       const data = (await response).data;
       
       if (data.success) {
-        toast.success('OTP resent successfully!');
+        let msg = 'OTP resent successfully!';
         if (data.data?.otp) {
-          // Show OTP in development mode
-          console.log('Development OTP:', data.data.otp);
+          msg += ` (Dev OTP: ${data.data.otp})`;
+          toast.success(`Dev OTP: ${data.data.otp}`, { duration: 10000 });
+        } else {
+          toast.success(msg);
         }
       } else {
         setError(data.message || 'Failed to resend OTP');

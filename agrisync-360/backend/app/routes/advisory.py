@@ -25,7 +25,6 @@ def ok(data=None, message="Success", status=200):
 
 
 @advisory_bp.get("/crop/<crop_name>")
-@jwt_required()
 def crop_advisory(crop_name):
     county = request.args.get("county")
     growth_stage = request.args.get("growth_stage")
