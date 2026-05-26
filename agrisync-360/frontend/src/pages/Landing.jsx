@@ -27,6 +27,12 @@ import Button from '../components/common/Button';
 import Card from '../components/common/Card';
 import Badge from '../components/common/Badge';
 
+import image1 from '../assets/image1.png';
+import image2 from '../assets/image2.png';
+import image3 from '../assets/image3.png';
+import image4 from '../assets/image4.png';
+import image5 from '../assets/image5.png';
+
 export default function Landing() {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -92,7 +98,7 @@ export default function Landing() {
       description: 'Get accurate 7-day weather forecasts with disease risk alerts and planting recommendations powered by advanced meteorological data.',
       color: 'text-blue-600',
       gradient: 'from-blue-50 to-blue-100',
-      image: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&q=80',
+      image: image1,
       imageAlt: 'Kenyan farm with weather monitoring equipment',
       rating: 4.8,
       reviews: 1247
@@ -103,7 +109,7 @@ export default function Landing() {
       description: 'Expert advice on planting, nutrition, and pest control for optimal yields from agricultural specialists.',
       color: 'text-green-600',
       gradient: 'from-green-50 to-green-100',
-      image: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&q=80',
+      image: image2,
       imageAlt: 'Agricultural expert advising on crop management',
       rating: 4.6,
       reviews: 892
@@ -114,7 +120,7 @@ export default function Landing() {
       description: 'Real-time market prices for major Kenyan crops and livestock to help you make informed selling decisions.',
       color: 'text-emerald-600',
       gradient: 'from-emerald-50 to-emerald-100',
-      image: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&q=80',
+      image: image3,
       imageAlt: 'Kenyan market with fresh produce for sale',
       rating: 4.9,
       reviews: 2156
@@ -125,7 +131,7 @@ export default function Landing() {
       description: 'Connect with thousands of Kenyan farmers, share experiences, and learn from agricultural experts.',
       color: 'text-purple-600',
       gradient: 'from-purple-50 to-purple-100',
-      image: 'https://images.unsplash.com/photo-1605000792413-7e0d4c43b0c?w=800&q=80',
+      image: image4,
       imageAlt: 'Kenyan farmers community meeting and sharing knowledge',
       rating: 4.7,
       reviews: 1563
@@ -136,7 +142,7 @@ export default function Landing() {
       description: 'Access affordable crop insurance options to protect your investment against weather and market risks.',
       color: 'text-red-600',
       gradient: 'from-red-50 to-red-100',
-      image: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&q=80',
+      image: image5,
       imageAlt: 'Protected crops with insurance coverage',
       rating: 4.5,
       reviews: 734
@@ -147,7 +153,7 @@ export default function Landing() {
       description: 'Access all features without internet using *384*360# on any mobile phone, anywhere in Kenya.',
       color: 'text-orange-600',
       gradient: 'from-orange-50 to-orange-100',
-      image: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=800&q=80',
+      image: image2,
       imageAlt: 'Mobile phone showing USSD service interface',
       rating: 4.4,
       reviews: 567

@@ -31,31 +31,31 @@ export default function Footer() {
             <h4 className="text-sm font-semibold text-gray-900 mb-4">Quick Links</h4>
             <ul className="space-y-2">
               <li>
-                <Link to="/dashboard" className="text-sm text-gray-600 hover:text-primary-600 transition-colors flex items-center gap-1">
+                <Link to="/farmer/dashboard" className="text-sm text-gray-600 hover:text-primary-600 transition-colors flex items-center gap-1">
                   <span className="w-1 h-1 bg-primary-400 rounded-full"></span>
                   Dashboard
                 </Link>
               </li>
               <li>
-                <Link to="/weather" className="text-sm text-gray-600 hover:text-primary-600 transition-colors flex items-center gap-1">
+                <Link to="/farmer/weather" className="text-sm text-gray-600 hover:text-primary-600 transition-colors flex items-center gap-1">
                   <span className="w-1 h-1 bg-primary-400 rounded-full"></span>
                   Weather
                 </Link>
               </li>
               <li>
-                <Link to="/advisory" className="text-sm text-gray-600 hover:text-primary-600 transition-colors flex items-center gap-1">
+                <Link to="/farmer/advisory" className="text-sm text-gray-600 hover:text-primary-600 transition-colors flex items-center gap-1">
                   <span className="w-1 h-1 bg-primary-400 rounded-full"></span>
                   Advisory
                 </Link>
               </li>
               <li>
-                <Link to="/market" className="text-sm text-gray-600 hover:text-primary-600 transition-colors flex items-center gap-1">
+                <Link to="/farmer/market" className="text-sm text-gray-600 hover:text-primary-600 transition-colors flex items-center gap-1">
                   <span className="w-1 h-1 bg-primary-400 rounded-full"></span>
                   Market
                 </Link>
               </li>
               <li>
-                <Link to="/subscription" className="text-sm text-gray-600 hover:text-primary-600 transition-colors flex items-center gap-1">
+                <Link to="/farmer/subscription" className="text-sm text-gray-600 hover:text-primary-600 transition-colors flex items-center gap-1">
                   <span className="w-1 h-1 bg-primary-400 rounded-full"></span>
                   Subscription
                 </Link>

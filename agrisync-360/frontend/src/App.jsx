@@ -27,6 +27,17 @@ import Market from "./pages/farmer/Market";
 import Profile from "./pages/farmer/Profile";
 import Subscription from "./pages/farmer/Subscription";
 import FarmSetup from "./pages/farmer/FarmSetup";
+import AIAssistant from "./pages/farmer/AIAssistant";
+import Community from "./pages/farmer/Community";
+import YieldTracker from "./pages/farmer/YieldTracker";
+import Greenhouse from "./pages/farmer/Greenhouse";
+import FarmOperations from "./pages/farmer/FarmOperations";
+import PlantingCalendar from "./pages/farmer/PlantingCalendar";
+import FinancialManager from "./pages/farmer/FinancialManager";
+import SoilHealth from "./pages/farmer/SoilHealth";
+import IrrigationManager from "./pages/farmer/IrrigationManager";
+import PestLibrary from "./pages/farmer/PestLibrary";
+import MarketPro from "./pages/farmer/MarketPro";
 
 // Admin pages
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -90,8 +101,8 @@ function ProtectedRoute({ children, requiredRole }) {
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h2>
           <p className="text-gray-600 mb-6">You don't have permission to access this page.</p>
-          <a 
-            href="/dashboard" 
+          <a
+            href="/farmer/dashboard"
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
           >
             Go to Dashboard
@@ -136,8 +147,8 @@ function PublicRoute({ children }) {
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Already Logged In</h2>
           <p className="text-gray-600 mb-6">You are already logged in.</p>
-          <a 
-            href="/dashboard" 
+          <a
+            href="/farmer/dashboard"
             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
           >
             Go to Dashboard
@@ -155,6 +166,7 @@ function AppRoutes() {
     <Routes>
       {/* Public routes */}
       <Route path="/" element={<Landing />} />
+      <Route path="/community" element={<Community />} />
       
       {/* Auth routes */}
       <Route path="/login" element={
@@ -179,7 +191,7 @@ function AppRoutes() {
       } />
 
       {/* Protected routes for farmers */}
-      <Route path="/" element={
+      <Route path="/farmer" element={
         <ProtectedRoute requiredRole="farmer">
           <DashboardLayout />
         </ProtectedRoute>
@@ -191,7 +203,21 @@ function AppRoutes() {
         <Route path="profile" element={<Profile />} />
         <Route path="subscription" element={<Subscription />} />
         <Route path="farm-setup" element={<FarmSetup />} />
+        <Route path="ai-chat" element={<AIAssistant />} />
+        <Route path="community" element={<Community />} />
+        <Route path="yield-tracker" element={<YieldTracker />} />
+        <Route path="greenhouse" element={<Greenhouse />} />
+        <Route path="farm-ops" element={<FarmOperations />} />
+        <Route path="calendar" element={<PlantingCalendar />} />
+        <Route path="financials" element={<FinancialManager />} />
+        <Route path="soil-health" element={<SoilHealth />} />
+        <Route path="irrigation" element={<IrrigationManager />} />
+        <Route path="pest-library" element={<PestLibrary />} />
+        <Route path="market-pro" element={<MarketPro />} />
       </Route>
+
+      {/* Legacy dashboard route - redirect to /farmer/dashboard */}
+      <Route path="/dashboard" element={<Navigate to="/farmer/dashboard" replace />} />
 
       {/* Admin routes */}
       <Route path="/admin" element={

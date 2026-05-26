@@ -112,7 +112,7 @@ export default function Subscription() {
           await loadSubscriptionData();
           setTimeout(() => {
             closeModal();
-            navigate('/dashboard');
+            navigate('/farmer/dashboard');
           }, 2500);
         } else if (payStatus === 'failed' || payStatus === 'cancelled') {
           stopPolling();

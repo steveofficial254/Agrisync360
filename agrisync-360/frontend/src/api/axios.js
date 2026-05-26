@@ -48,9 +48,10 @@ API.interceptors.response.use(
       
       // Session expired
       localStorage.clear()
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login'
-      }
+      // Removed automatic redirect to prevent refresh loops
+      // if (window.location.pathname !== '/login') {
+      //   window.location.href = '/login'
+      // }
     }
     
     return Promise.reject({

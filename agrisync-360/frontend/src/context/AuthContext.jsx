@@ -57,8 +57,9 @@ export function AuthProvider({ children }) {
     const paths = {
       admin: '/admin', agro_dealer: '/dealer',
       ngo_partner: '/ngo', county_officer: '/admin',
+      farmer: '/farmer/dashboard',
     }
-    return paths[role] || '/dashboard'
+    return paths[role] || '/farmer/dashboard'
   }, [])
 
   return (

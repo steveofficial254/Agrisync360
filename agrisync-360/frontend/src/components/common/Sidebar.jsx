@@ -21,27 +21,27 @@ export default function Sidebar({
       section: 'main',
       title: 'Main',
       items: [
-        { id: 'dashboard', label: 'Dashboard', icon: Home, href: '/dashboard' },
-        { id: 'weather', label: 'Weather', icon: Cloud, href: '/weather' },
-        { id: 'advisory', label: 'Advisory', icon: FileText, href: '/advisory' },
-        { id: 'market', label: 'Market', icon: TrendingUp, href: '/market' },
+        { id: 'dashboard', label: 'Dashboard', icon: Home, href: '/farmer/dashboard' },
+        { id: 'weather', label: 'Weather', icon: Cloud, href: '/farmer/weather' },
+        { id: 'advisory', label: 'Advisory', icon: FileText, href: '/farmer/advisory' },
+        { id: 'market', label: 'Market', icon: TrendingUp, href: '/farmer/market' },
       ]
     },
     {
       section: 'farm',
       title: 'Farm Management',
       items: [
-        { id: 'farms', label: 'My Farms', icon: '🌾', href: '/farms' },
-        { id: 'crops', label: 'Crops', icon: '🌱', href: '/crops' },
-        { id: 'planting', label: 'Planting Calendar', icon: '📅', href: '/planting' },
+        { id: 'farms', label: 'My Farms', icon: '🌾', href: '/farmer/farms' },
+        { id: 'crops', label: 'Crops', icon: '🌱', href: '/farmer/crops' },
+        { id: 'planting', label: 'Planting Calendar', icon: '📅', href: '/farmer/calendar' },
       ]
     },
     {
       section: 'account',
       title: 'Account',
       items: [
-        { id: 'profile', label: 'Profile', icon: User, href: '/profile' },
-        { id: 'settings', label: 'Settings', icon: Settings, href: '/settings' },
+        { id: 'profile', label: 'Profile', icon: User, href: '/farmer/profile' },
+        { id: 'settings', label: 'Settings', icon: Settings, href: '/farmer/settings' },
         { id: 'logout', label: 'Logout', icon: LogOut, action: 'logout' },
       ]
     }

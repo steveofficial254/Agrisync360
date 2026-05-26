@@ -15,7 +15,18 @@ import {
   HelpCircle,
   Package,
   Send,
-  Users
+  Users,
+  MessageSquare,
+  MessageCircle,
+  Activity,
+  Box,
+  Clipboard,
+  Calendar,
+  DollarSign,
+  Leaf,
+  Droplets,
+  Bug,
+  Building2
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/common/Button';
@@ -31,12 +42,23 @@ export default function DashboardLayout() {
   };
 
   const farmerNav = [
-    { name: 'Dashboard', href: '/dashboard', icon: Home, label: 'Nyumbani', labelEn: 'Home' },
-    { name: 'Weather', href: '/weather', icon: Cloud, label: 'Hewa', labelEn: 'Weather' },
-    { name: 'Advisory', href: '/advisory', icon: BookOpen, label: 'Ushauri', labelEn: 'Advisory' },
-    { name: 'Market', href: '/market', icon: TrendingUp, label: 'Soko', labelEn: 'Market' },
-    { name: 'Profile', href: '/profile', icon: User, label: 'Akaunti', labelEn: 'Profile' },
-    { name: 'Subscription', href: '/subscription', icon: CreditCard, label: 'Malipo', labelEn: 'Subscription' },
+    { name: 'Dashboard', href: '/farmer/dashboard', icon: Home, label: 'Nyumbani', labelEn: 'Home' },
+    { name: 'AI Assistant', href: '/farmer/ai-chat', icon: MessageSquare, label: 'AI', labelEn: 'AI' },
+    { name: 'Community', href: '/farmer/community', icon: MessageCircle, label: 'Jamii', labelEn: 'Community' },
+    { name: 'Weather', href: '/farmer/weather', icon: Cloud, label: 'Hewa', labelEn: 'Weather' },
+    { name: 'Advisory', href: '/farmer/advisory', icon: BookOpen, label: 'Ushauri', labelEn: 'Advisory' },
+    { name: 'Market', href: '/farmer/market', icon: TrendingUp, label: 'Soko', labelEn: 'Market' },
+    { name: 'Market Pro', href: '/farmer/market-pro', icon: Building2, label: 'Soko+', labelEn: 'Market Pro' },
+    { name: 'Calendar', href: '/farmer/calendar', icon: Calendar, label: 'Kalenda', labelEn: 'Calendar' },
+    { name: 'Financials', href: '/farmer/financials', icon: DollarSign, label: 'Fedha', labelEn: 'Financials' },
+    { name: 'Soil Health', href: '/farmer/soil-health', icon: Leaf, label: 'Ardhi', labelEn: 'Soil' },
+    { name: 'Irrigation', href: '/farmer/irrigation', icon: Droplets, label: 'Maji', labelEn: 'Irrigation' },
+    { name: 'Pest Library', href: '/farmer/pest-library', icon: Bug, label: 'Wadudu', labelEn: 'Pests' },
+    { name: 'Yields', href: '/farmer/yield-tracker', icon: Activity, label: 'Mavuno', labelEn: 'Yields' },
+    { name: 'Farm Ops', href: '/farmer/farm-ops', icon: Clipboard, label: 'Kazi', labelEn: 'Ops' },
+    { name: 'Greenhouse', href: '/farmer/greenhouse', icon: Box, label: 'NyumbaK', labelEn: 'Greenhouse' },
+    { name: 'Profile', href: '/farmer/profile', icon: User, label: 'Akaunti', labelEn: 'Profile' },
+    { name: 'Subscription', href: '/farmer/subscription', icon: CreditCard, label: 'Malipo', labelEn: 'Subscription' },
   ];
 
   const adminNav = [

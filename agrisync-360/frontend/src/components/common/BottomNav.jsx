@@ -9,11 +9,11 @@ export default function BottomNav({
   ...props
 }) {
   const navItems = [
-    { id: 'home', label: 'Home', icon: Home, href: '/dashboard' },
-    { id: 'weather', label: 'Weather', icon: Cloud, href: '/weather' },
-    { id: 'advisory', label: 'Advisory', icon: FileText, href: '/advisory' },
-    { id: 'market', label: 'Market', icon: TrendingUp, href: '/market' },
-    { id: 'profile', label: 'Profile', icon: User, href: '/profile' },
+    { id: 'home', label: 'Home', icon: Home, href: '/farmer/dashboard' },
+    { id: 'weather', label: 'Weather', icon: Cloud, href: '/farmer/weather' },
+    { id: 'advisory', label: 'Advisory', icon: FileText, href: '/farmer/advisory' },
+    { id: 'market', label: 'Market', icon: TrendingUp, href: '/farmer/market' },
+    { id: 'profile', label: 'Profile', icon: User, href: '/farmer/profile' },
   ];
 
   const handleTabClick = (item) => {

@@ -358,8 +358,7 @@ def forgot_password():
         user = User.query.filter_by(phone=phone).first()
         if not user:
             return err("USER_NOT_FOUND", "No account found with this phone number", 404)
-        otp = user.generate_otp()
-        user.otp_type = 'password_reset'
+        otp = user.generate_otp(otp_type='password_reset')
         db.session.commit()
     except SQLAlchemyError as e:
         db.session.rollback()

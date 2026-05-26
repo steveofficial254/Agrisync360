@@ -264,7 +264,7 @@ export default function FarmSetup() {
         toast.success('Farm created successfully!');
       }
 
-      navigate('/dashboard');
+      navigate('/farmer/dashboard');
     } catch (err) {
       console.error('Farm setup error:', err);
       console.error('Farm setup error details:', {

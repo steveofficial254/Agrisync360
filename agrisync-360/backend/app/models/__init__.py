@@ -9,4 +9,30 @@ from app.models.sms import SMS
 from app.models.user import User
 from app.models.weather import Weather
 
-__all__ = ["User", "Farmer", "Farm", "Crop", "Weather", "Advisory", "Market", "Payment", "SMS", "Alert"]
+from app.models.ai_chat import AIConversation, AIMessage, AIChat
+from app.models.community import CommunityPost, CommunityComment, CommunityLike
+from app.models.greenhouse import Greenhouse, GreenhouseReading
+from app.models.yield_record import YieldRecord
+from app.models.farm_ops import FarmOperation, InventoryItem, Batch, ComplianceRecord
+
+from app.models.farm_intelligence import (
+    PlantingCalendarEntry, SoilHealthRecord,
+    IrrigationSchedule, PestDiseaseEntry
+)
+from app.models.financial import (
+    FinancialTransaction, LoanRecord,
+    InsurancePolicy, SeasonBudget
+)
+from app.models.market_pro import PriceAlert, BuyerDirectory
+
+__all__ = [
+    "User", "Farmer", "Farm", "Crop", "Weather", "Advisory", "Market", "Payment", "SMS", "Alert",
+    "AIConversation", "AIMessage", "AIChat",
+    "CommunityPost", "CommunityComment", "CommunityLike",
+    "Greenhouse", "GreenhouseReading",
+    "YieldRecord",
+    "FarmOperation", "InventoryItem", "Batch", "ComplianceRecord",
+    "PlantingCalendarEntry", "SoilHealthRecord", "IrrigationSchedule", "PestDiseaseEntry",
+    "FinancialTransaction", "LoanRecord", "InsurancePolicy", "SeasonBudget",
+    "PriceAlert", "BuyerDirectory"
+]

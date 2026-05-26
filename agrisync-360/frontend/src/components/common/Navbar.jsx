@@ -23,17 +23,17 @@ export default function Navbar({
   const unreadNotifications = notifications?.filter(n => !n.read).length || 0;
 
   const navItems = [
-    { name: 'Dashboard', href: '/dashboard', icon: '🏠' },
-    { name: 'Weather', href: '/weather', icon: '🌤️' },
-    { name: 'Advisory', href: '/advisory', icon: '📋' },
-    { name: 'Market', href: '/market', icon: '📈' },
-    { name: 'Profile', href: '/profile', icon: '👤' },
+    { name: 'Dashboard', href: '/farmer/dashboard', icon: '🏠' },
+    { name: 'Weather', href: '/farmer/weather', icon: '🌤️' },
+    { name: 'Advisory', href: '/farmer/advisory', icon: '📋' },
+    { name: 'Market', href: '/farmer/market', icon: '📈' },
+    { name: 'Profile', href: '/farmer/profile', icon: '👤' },
   ];
 
   const userMenuItems = [
-    { name: 'Profile', href: '/profile', icon: User },
-    { name: 'Settings', href: '/settings', icon: Settings },
-    { name: 'Help', href: '/help', icon: HelpCircle },
+    { name: 'Profile', href: '/farmer/profile', icon: User },
+    { name: 'Settings', href: '/farmer/settings', icon: Settings },
+    { name: 'Help', href: '/farmer/help', icon: HelpCircle },
     { name: 'Logout', action: handleLogout, icon: LogOut, variant: 'danger' },
   ];
 
