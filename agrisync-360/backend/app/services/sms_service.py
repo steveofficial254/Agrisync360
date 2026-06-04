@@ -19,7 +19,7 @@ class SMSService:
             api_key = os.getenv('AT_API_KEY', '')
             if api_key:
                 africastalking.initialize(username, api_key)
-                cls._sms = africastalking.SMS()
+                cls._sms = africastalking.SMS
                 cls._initialized = True
                 logger.info("Africa's Talking initialized")
             else:
