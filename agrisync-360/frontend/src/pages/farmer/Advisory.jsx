@@ -42,6 +42,57 @@ const growthStages = {
   harvesting: 'Harvesting'
 };
 
+const processAdvisoryData = (data, type) => {
+  if (!data) return [];
+  if (type === 'nutrition') {
+    const items = Array.isArray(data) ? data : [data];
+    return items.map(item => ({
+      title: item.title || `${item.crop_name?.toUpperCase() || 'Crop'} Nutrition Guide`,
+      content: item.content || item.application_method || (item.recommended_products ? `Recommended: ${item.recommended_products.join(', ')}` : 'No nutrition details.'),
+      npk: item.npk_requirements ? {
+        n: item.npk_requirements.N,
+        p: item.npk_requirements.P,
+        k: item.npk_requirements.K
+      } : null
+    }));
+  }
+  
+  if (type === 'pests') {
+    const items = Array.isArray(data) ? data : [data];
+    return items.map(item => ({
+      title: item.title || item.threat || 'Pest & Disease Alert',
+      content: item.content || item.action_required || 'Monitor crop health regularly.',
+      symptoms: item.symptoms || null,
+      treatment: item.treatment || item.action_required || null
+    }));
+  }
+  
+  if (type === 'harvest') {
+    const items = Array.isArray(data) ? data : [data];
+    return items.map(item => ({
+      title: item.title || `${item.crop_name?.toUpperCase() || 'Crop'} Harvesting Guide`,
+      content: item.content || 'Harvest when crop reaches maturity.',
+      indicators: item.indicators || ['Dry husks / mature coloring', 'Firm texture']
+    }));
+  }
+
+  const items = Array.isArray(data) ? data : [data];
+  return items.map(item => ({
+    title: item.title || 'Crop Advisory',
+    content: item.content || ''
+  }));
+};
+
+const processCalendarData = (data, cropType) => {
+  if (!Array.isArray(data)) return [];
+  return data.map(week => ({
+    week: week.week,
+    title: week.task || week.activity || `Week ${week.week} Tasks`,
+    description: week.watch_for || week.notes || 'Regular monitoring',
+    tasks: week.inputs_needed ? week.inputs_needed.split(',').map(t => t.trim()) : []
+  }));
+};
+
 export default function Advisory() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -138,25 +189,53 @@ export default function Advisory() {
   const loadCropAdvisories = async (crop) => {
     if (!crop || !crop.crop_type) {
       console.warn('Crop type is undefined, using default:', crop);
-      // Don't return - handle gracefully with default crop type
-      crop = { ...crop, crop_type: 'maize' }; // Default to maize
+      crop = { ...crop, crop_type: 'maize' };
     }
 
     try {
+      // Get planting guide
+      let plantingResp = { data: { data: [] } };
+      try {
+        plantingResp = await advisoryAPI.getCropAdvisory(crop.crop_type, { growth_stage: 'planting' });
+      } catch (e) {
+        console.warn('Failed to load planting guide:', e);
+      }
+
       // Get nutrition advisory (enhanced with real data)
-      const nutritionResp = await advisoryAPI.getNutrition(crop.crop_type, crop.growth_stage || 'vegetative');
+      let nutritionResp = { data: { data: [] } };
+      try {
+        nutritionResp = await advisoryAPI.getNutrition(crop.crop_type, crop.growth_stage || 'vegetative');
+      } catch (e) {
+        console.warn('Failed to load nutrition guide:', e);
+      }
       
       // Get planting calendar (now uses FAO data)
-      const calendarResp = await advisoryAPI.getCalendar(crop.crop_type);
+      let calendarResp = { data: { data: [] } };
+      try {
+        calendarResp = await advisoryAPI.getCalendar(crop.crop_type);
+      } catch (e) {
+        console.warn('Failed to load planting calendar:', e);
+      }
       
       // Get pest advisory (enhanced with disease risk)
-      const pestResp = await advisoryAPI.getPests(crop.crop_type);
+      let pestResp = { data: { data: [] } };
+      try {
+        pestResp = await advisoryAPI.getPests(crop.crop_type);
+      } catch (e) {
+        console.warn('Failed to load pest guide:', e);
+      }
       
       // Get harvest advisory
-      const harvestResp = await advisoryAPI.getHarvest(crop.crop_type);
+      let harvestResp = { data: { data: [] } };
+      try {
+        harvestResp = await advisoryAPI.getHarvest(crop.crop_type);
+      } catch (e) {
+        console.warn('Failed to load harvest guide:', e);
+      }
 
       // Process and enhance the data
       const processedData = {
+        planting: processAdvisoryData(plantingResp.data?.data || [], 'planting'),
         nutrition: processAdvisoryData(nutritionResp.data?.data || [], 'nutrition'),
         calendar: processCalendarData(calendarResp.data?.data || [], crop.crop_type),
         pests: processAdvisoryData(pestResp.data?.data || [], 'pests'),
