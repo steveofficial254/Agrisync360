@@ -8,16 +8,17 @@ its transaction to avoid leaving dirty data.
 """
 import os
 import pytest
-from app import create_app
-from app.extensions import db as _db
-from flask_jwt_extended import create_access_token
 
-# Override TEST_DATABASE_URL to use the existing dev database
-# (agrisync_user does not have CREATEDB rights to create agrisync_test)
-os.environ["TEST_DATABASE_URL"] = os.environ.get(
+# Set database URL BEFORE importing app to ensure it's picked up by config
+os.environ["DATABASE_URL"] = os.environ.get(
     "DATABASE_URL",
     "postgresql://agrisync_user:agrisync_pass@localhost:5432/agrisync_db"
 )
+os.environ["TEST_DATABASE_URL"] = os.environ["DATABASE_URL"]
+
+from app import create_app
+from app.extensions import db as _db
+from flask_jwt_extended import create_access_token
 
 
 @pytest.fixture(scope="session")
@@ -45,7 +46,7 @@ def db_session(app):
     transaction = connection.begin()
 
     options = {"bind": connection, "binds": {}}
-    sess = _db.create_scoped_session(options=options)
+    sess = _db._make_scoped_session(options=options)
     _db.session = sess
 
     yield sess

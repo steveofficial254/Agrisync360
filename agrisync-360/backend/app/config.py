@@ -56,8 +56,10 @@ class ProductionConfig(BaseConfig):
 
 class TestingConfig(BaseConfig):
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = os.environ.get("TEST_DATABASE_URL", "sqlite:///:memory:")
+    SQLALCHEMY_DATABASE_URI = os.environ.get("TEST_DATABASE_URL", os.environ.get("DATABASE_URL", "postgresql://agrisync_user:agrisync_pass@localhost:5432/agrisync_db"))
     WTF_CSRF_ENABLED = False
+    RATELIMIT_ENABLED = False
+    RATELIMIT_DEFAULT = "100000 per hour"  # Effectively disable rate limiting for tests
 
 
 config = {
