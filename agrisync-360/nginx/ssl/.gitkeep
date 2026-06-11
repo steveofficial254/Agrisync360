@@ -1,0 +1,4 @@
+# SSL certificates should be placed here
+# DO NOT commit actual certificates to git
+# cert.pem - SSL certificate
+# key.pem - SSL private key

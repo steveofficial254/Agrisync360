@@ -1,0 +1,30 @@
+name: Status Monitor
+
+on:
+  schedule:
+    - cron: '0 * * * *'  # Every hour
+  workflow_dispatch:
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📊 Get last 7 days stats
+        run: |
+          echo "## CI/CD Statistics" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📊 Last 7 days of tests" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Checking workflow runs..." >> $GITHUB_STEP_SUMMARY
+
+      - name: 📈 Check workflow status
+        run: |
+          echo "## Recent Workflow Runs" >> $GITHUB_STEP_SUMMARY
+          gh run list --limit 10 --json conclusion,name,createdAt,displayTitle >> $GITHUB_STEP_SUMMARY || echo "No recent runs found" >> $GITHUB_STEP_SUMMARY
+
+      - name: 🐳 Check Docker images
+        run: |
+          echo "## Docker Images" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Backend: ghcr.io/Steveofficial254/agrisync-360/backend" >> $GITHUB_STEP_SUMMARY
+          echo "Frontend: ghcr.io/Steveofficial254/agrisync-360/frontend" >> $GITHUB_STEP_SUMMARY

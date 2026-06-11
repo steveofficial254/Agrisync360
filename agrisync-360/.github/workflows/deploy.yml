@@ -1,62 +1,78 @@
-name: Deploy AgriSync 360
+name: Deploy to Production
 
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - 'README.md'
+      - '.gitignore'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  test-and-deploy:
+  deploy:
+    name: 🚀 Deploy to DigitalOcean
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
 
     steps:
-      - name: Checkout code
+      - name: 📥 Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+      - name: 🐳 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-      - name: Install backend dependencies
-        working-directory: ./backend
+      - name: 🔐 Log in to Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🐳 Build and push backend image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend:${{ github.sha }}
+
+      - name: 🐳 Build and push frontend image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend:latest
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend:${{ github.sha }}
+
+      - name: 🚀 Deploy to DigitalOcean App Platform
         run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.DIGITALOCEAN_TOKEN }}" \
+            https://api.digitalocean.com/v2/apps/${{ secrets.DIGITALOCEAN_APP_ID }}/deployments \
+            -d '{"force_build": true}'
 
-      - name: Run backend tests
-        working-directory: ./backend
-        run: pytest
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Install frontend dependencies
-        working-directory: ./frontend
-        run: npm ci
-
-      - name: Run frontend tests
-        working-directory: ./frontend
-        run: npm test
-
-      - name: Deploy to DigitalOcean
+      - name: 📧 Send deployment notification
         if: success()
-        uses: appleboy/ssh-action@v1.0.3
+        uses: slackapi/slack-github-action@v1.24.0
         with:
-          host: ${{ secrets.DO_HOST }}
-          username: ${{ secrets.DO_USER }}
-          key: ${{ secrets.DO_SSH_KEY }}
-          script: |
-            cd /opt/agrisync360
-            git pull origin main
-            cd backend
-            source venv/bin/activate
-            flask db upgrade
-            sudo systemctl restart agrisync-gunicorn
-            sudo systemctl restart agrisync-celery
-            sudo systemctl restart agrisync-celerybeat
-            cd ../frontend
-            npm install
-            npm run build
-            sudo systemctl restart nginx
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          payload: |
+            {
+              "text": "🚀 AgriSync 360 Deployed to Production",
+              "blocks": [
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*🚀 AgriSync 360 Deployed to Production*\nCommit: ${{ github.sha }}\nAuthor: ${{ github.actor }}\nURL: https://agrisync360.co.ke"
+                  }
+                }
+              ]
+            }

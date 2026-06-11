@@ -1,5 +1,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { BrowserRouter } from 'react-router-dom'
 import axios from 'axios'
 
 // Mock axios for all tests
@@ -2044,64 +2046,154 @@ describe('Frontend Integration Tests', () => {
       vi.clearAllMocks()
     })
 
-    it('should render Dashboard component', () => {
-      // Mock component rendering test
+    it('should render Dashboard component', async () => {
+      const Dashboard = (await import('../pages/farmer/Dashboard')).default
+      render(
+        <BrowserRouter>
+          <Dashboard />
+        </BrowserRouter>
+      )
+      // Component renders without crashing
       expect(true).toBe(true)
     })
 
-    it('should render Weather component', () => {
+    it('should render Weather component', async () => {
+      const Weather = (await import('../pages/farmer/Weather')).default
+      render(
+        <BrowserRouter>
+          <Weather />
+        </BrowserRouter>
+      )
       expect(true).toBe(true)
     })
 
-    it('should render Advisory component', () => {
+    it('should render Advisory component', async () => {
+      const Advisory = (await import('../pages/farmer/Advisory')).default
+      render(
+        <BrowserRouter>
+          <Advisory />
+        </BrowserRouter>
+      )
       expect(true).toBe(true)
     })
 
-    it('should render Market component', () => {
+    it('should render Market component', async () => {
+      const Market = (await import('../pages/farmer/Market')).default
+      render(
+        <BrowserRouter>
+          <Market />
+        </BrowserRouter>
+      )
       expect(true).toBe(true)
     })
 
-    it('should render Subscription component', () => {
+    it('should render Subscription component', async () => {
+      const Subscription = (await import('../pages/farmer/Subscription')).default
+      render(
+        <BrowserRouter>
+          <Subscription />
+        </BrowserRouter>
+      )
       expect(true).toBe(true)
     })
 
-    it('should render Profile component', () => {
+    it('should render Profile component', async () => {
+      const Profile = (await import('../pages/farmer/Profile')).default
+      render(
+        <BrowserRouter>
+          <Profile />
+        </BrowserRouter>
+      )
       expect(true).toBe(true)
     })
 
-    it('should render FarmSetup component', () => {
+    it('should render FarmSetup component', async () => {
+      const FarmSetup = (await import('../pages/farmer/FarmSetup')).default
+      render(
+        <BrowserRouter>
+          <FarmSetup />
+        </BrowserRouter>
+      )
       expect(true).toBe(true)
     })
 
-    it('should render PlantingCalendar component', () => {
+    it('should render PlantingCalendar component', async () => {
+      const PlantingCalendar = (await import('../pages/farmer/PlantingCalendar')).default
+      render(
+        <BrowserRouter>
+          <PlantingCalendar />
+        </BrowserRouter>
+      )
       expect(true).toBe(true)
     })
 
-    it('should render YieldTracker component', () => {
+    it('should render YieldTracker component', async () => {
+      const YieldTracker = (await import('../pages/farmer/YieldTracker')).default
+      render(
+        <BrowserRouter>
+          <YieldTracker />
+        </BrowserRouter>
+      )
       expect(true).toBe(true)
     })
 
-    it('should render AIAssistant component', () => {
+    it('should render AIAssistant component', async () => {
+      const AIAssistant = (await import('../pages/farmer/AIAssistant')).default
+      render(
+        <BrowserRouter>
+          <AIAssistant />
+        </BrowserRouter>
+      )
       expect(true).toBe(true)
     })
 
-    it('should render FinancialManager component', () => {
+    it('should render FinancialManager component', async () => {
+      const FinancialManager = (await import('../pages/farmer/FinancialManager')).default
+      render(
+        <BrowserRouter>
+          <FinancialManager />
+        </BrowserRouter>
+      )
       expect(true).toBe(true)
     })
 
-    it('should render SoilHealth component', () => {
+    it('should render SoilHealth component', async () => {
+      const SoilHealth = (await import('../pages/farmer/SoilHealth')).default
+      render(
+        <BrowserRouter>
+          <SoilHealth />
+        </BrowserRouter>
+      )
       expect(true).toBe(true)
     })
 
-    it('should render IrrigationManager component', () => {
+    it('should render IrrigationManager component', async () => {
+      const IrrigationManager = (await import('../pages/farmer/IrrigationManager')).default
+      render(
+        <BrowserRouter>
+          <IrrigationManager />
+        </BrowserRouter>
+      )
       expect(true).toBe(true)
     })
 
-    it('should render PestLibrary component', () => {
+    it('should render PestLibrary component', async () => {
+      const PestLibrary = (await import('../pages/farmer/PestLibrary')).default
+      render(
+        <BrowserRouter>
+          <PestLibrary />
+        </BrowserRouter>
+      )
       expect(true).toBe(true)
     })
 
-    it('should render Community component', () => {
+    it('should render Community component', async () => {
+      const Community = (await import('../pages/farmer/Community')).default
+      render(
+        <BrowserRouter>
+          <Community />
+        </BrowserRouter>
+      )
       expect(true).toBe(true)
     })
   })

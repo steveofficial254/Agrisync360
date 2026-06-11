@@ -1,0 +1,15 @@
+[MASTER]
+disable=
+    missing-docstring,
+    too-few-public-methods,
+    too-many-arguments,
+    C0111,
+    C0103,
+    R0913,
+    R0914,
+    W0212,
+
+load-plugins=pylint_flask
+
+[FORMAT]
+max-line-length=100
