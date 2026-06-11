@@ -1,37 +1,13 @@
-
 import React, { useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { 
-  Home, 
-  Cloud, 
-  BookOpen, 
-  TrendingUp, 
-  User, 
-  CreditCard, 
-  Menu, 
-  X,
-  LogOut,
-  Settings,
-  HelpCircle,
-  Package,
-  Send,
-  Users,
-  MessageSquare,
-  MessageCircle,
-  Activity,
-  Box,
-  Clipboard,
-  Calendar,
-  DollarSign,
-  Leaf,
-  Droplets,
-  Bug,
-  Building2
+  Menu, LogOut, Home, MessageSquare, MessageCircle, Cloud, BookOpen,
+  Users, TrendingUp, AlertTriangle, Package, Send
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import Button from '../components/common/Button';
+import SidebarNav from './SidebarNav';
 
-export default function DashboardLayout() {
+export default function DashboardLayout({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -42,48 +18,33 @@ export default function DashboardLayout() {
   };
 
   const farmerNav = [
-    { name: 'Dashboard', href: '/farmer/dashboard', icon: Home, label: 'Nyumbani', labelEn: 'Home' },
-    { name: 'AI Assistant', href: '/farmer/ai-chat', icon: MessageSquare, label: 'AI', labelEn: 'AI' },
-    { name: 'Community', href: '/farmer/community', icon: MessageCircle, label: 'Jamii', labelEn: 'Community' },
-    { name: 'Weather', href: '/farmer/weather', icon: Cloud, label: 'Hewa', labelEn: 'Weather' },
-    { name: 'Advisory', href: '/farmer/advisory', icon: BookOpen, label: 'Ushauri', labelEn: 'Advisory' },
-    { name: 'Market', href: '/farmer/market', icon: TrendingUp, label: 'Soko', labelEn: 'Market' },
-    { name: 'Market Pro', href: '/farmer/market-pro', icon: Building2, label: 'Soko+', labelEn: 'Market Pro' },
-    { name: 'Calendar', href: '/farmer/calendar', icon: Calendar, label: 'Kalenda', labelEn: 'Calendar' },
-    { name: 'Financials', href: '/farmer/financials', icon: DollarSign, label: 'Fedha', labelEn: 'Financials' },
-    { name: 'Soil Health', href: '/farmer/soil-health', icon: Leaf, label: 'Ardhi', labelEn: 'Soil' },
-    { name: 'Irrigation', href: '/farmer/irrigation', icon: Droplets, label: 'Maji', labelEn: 'Irrigation' },
-    { name: 'Pest Library', href: '/farmer/pest-library', icon: Bug, label: 'Wadudu', labelEn: 'Pests' },
-    { name: 'Yields', href: '/farmer/yield-tracker', icon: Activity, label: 'Mavuno', labelEn: 'Yields' },
-    { name: 'Farm Ops', href: '/farmer/farm-ops', icon: Clipboard, label: 'Kazi', labelEn: 'Ops' },
-    { name: 'Greenhouse', href: '/farmer/greenhouse', icon: Box, label: 'NyumbaK', labelEn: 'Greenhouse' },
-    { name: 'Profile', href: '/farmer/profile', icon: User, label: 'Akaunti', labelEn: 'Profile' },
-    { name: 'Subscription', href: '/farmer/subscription', icon: CreditCard, label: 'Malipo', labelEn: 'Subscription' },
+    { name: 'Dashboard', href: '/farmer/dashboard', icon: Home, label: 'Nyumbani' },
+    { name: 'AI Assistant', href: '/farmer/ai-chat', icon: MessageSquare, label: 'AI' },
+    { name: 'Community', href: '/farmer/community', icon: MessageCircle, label: 'Jamii' },
+    { name: 'Weather', href: '/farmer/weather', icon: Cloud, label: 'Hewa' },
+    { name: 'Advisory', href: '/farmer/advisory', icon: BookOpen, label: 'Ushauri' },
   ];
 
   const adminNav = [
-    { name: 'Dashboard', href: '/admin', icon: Home },
-    { name: 'Farmers', href: '/admin/farmers', icon: User },
-    { name: 'Advisory', href: '/admin/advisory', icon: BookOpen },
-    { name: 'Market', href: '/admin/market', icon: TrendingUp },
-    { name: 'Alerts', href: '/admin/alerts', icon: HelpCircle },
-    { name: 'Logout', action: handleLogout, icon: LogOut, variant: 'danger' },
+    { name: 'Dashboard', href: '/admin', icon: Home, label: 'Home' },
+    { name: 'Farmers', href: '/admin/farmers', icon: Users, label: 'Farmers' },
+    { name: 'Advisory', href: '/admin/advisory', icon: BookOpen, label: 'Advisories' },
+    { name: 'Market', href: '/admin/market', icon: TrendingUp, label: 'Market' },
+    { name: 'Alerts', href: '/admin/alerts', icon: AlertTriangle, label: 'Alerts' },
   ];
 
   const dealerNav = [
-    { name: 'Dashboard', href: '/dealer', icon: Home },
-    { name: 'Products', href: '/dealer/products', icon: Package },
-    { name: 'Farmers', href: '/dealer/farmers', icon: User },
-    { name: 'Broadcasts', href: '/dealer/broadcasts', icon: Send },
-    { name: 'Profile', href: '/dealer/profile', icon: User },
+    { name: 'Dashboard', href: '/dealer', icon: Home, label: 'Home' },
+    { name: 'Products', href: '/dealer/products', icon: Package, label: 'Products' },
+    { name: 'Farmers', href: '/dealer/farmers', icon: Users, label: 'Farmers' },
+    { name: 'Broadcasts', href: '/dealer/broadcasts', icon: Send, label: 'Broadcasts' },
   ];
 
   const ngoNav = [
-    { name: 'Dashboard', href: '/ngo', icon: Home },
-    { name: 'Farmers', href: '/ngo/farmers', icon: User },
-    { name: 'Batches', href: '/ngo/batches', icon: Users },
-    { name: 'Broadcasts', href: '/ngo/broadcasts', icon: Send },
-    { name: 'Profile', href: '/ngo/profile', icon: User },
+    { name: 'Dashboard', href: '/ngo', icon: Home, label: 'Home' },
+    { name: 'Farmers', href: '/ngo/farmers', icon: Users, label: 'Farmers' },
+    { name: 'Batches', href: '/ngo/batches', icon: Package, label: 'Batches' },
+    { name: 'Broadcasts', href: '/ngo/broadcasts', icon: Send, label: 'Broadcasts' },
   ];
 
   const getNavigation = () => {
@@ -96,115 +57,42 @@ export default function DashboardLayout() {
   const navigation = getNavigation();
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Mobile sidebar backdrop */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+    <div className="flex min-h-screen bg-gray-50">
+      {/* Sidebar Navigation */}
+      <SidebarNav
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        role={user?.role}
+      />
 
-      {/* Sidebar */}
-      <div className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out
-        lg:translate-x-0 lg:static lg:inset-0
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      `}>
-        <div className="flex items-center justify-between h-16 px-6 border-b">
-          <div className="flex items-center">
-            <div className="w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center">
-              <span className="text-white font-bold">A3</span>
-            </div>
-            <span className="ml-2 text-xl font-semibold text-gray-900">AgriSync</span>
-          </div>
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col min-w-0 pb-16 lg:pb-0">
+        {/* Mobile Header */}
+        <header className="lg:hidden flex items-center justify-between p-4
+                          border-b border-green-100 bg-white sticky top-0 z-20 shadow-sm">
           <button
-            onClick={() => setSidebarOpen(false)}
-            className="lg:hidden p-1 rounded-md text-gray-400 hover:text-gray-500"
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 hover:bg-green-50 rounded-lg transition-colors"
           >
-            <X className="h-5 w-5" />
+            <Menu size={20} className="text-gray-600" />
           </button>
-        </div>
-
-        <nav className="mt-6 px-3">
-          <div className="space-y-1">
-            {navigation.map((item) => {
-              const isActive = location.pathname === item.href;
-              return (
-                <button
-                  key={item.name}
-                  onClick={() => {
-                    if (item.action) {
-                      item.action();
-                    } else {
-                      navigate(item.href);
-                      setSidebarOpen(false);
-                    }
-                  }}
-                  className={`
-                    w-full flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors
-                    ${isActive
-                      ? 'bg-primary-100 text-primary-700 border-r-2 border-primary-700'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                    }
-                    ${item.variant === 'danger' ? 'text-red-600 hover:bg-red-50 hover:text-red-700' : ''}
-                  `}
-                >
-                  <item.icon className="mr-3 h-5 w-5" />
-                  {item.name}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* User section */}
-          <div className="mt-8 pt-6 border-t">
-            <div className="px-3 py-2">
-              <p className="text-sm font-medium text-gray-900">
-                {user?.phone || 'User'}
-              </p>
-              <p className="text-xs text-gray-500 capitalize">
-                {user?.role?.replace('_', ' ') || 'farmer'}
-              </p>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="w-full mt-2 flex items-center px-3 py-2 text-sm font-medium text-gray-600 rounded-md hover:bg-gray-50 hover:text-gray-900"
-            >
-              <LogOut className="mr-3 h-5 w-5" />
-              Logout
-            </button>
-          </div>
-        </nav>
-      </div>
-
-      {/* Main content */}
-      <div className="flex-1 lg:ml-0">
-        {/* Top header */}
-        <header className="bg-white shadow-sm border-b lg:hidden">
-          <div className="flex items-center justify-between h-16 px-4">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="p-2 rounded-md text-gray-400 hover:text-gray-500"
-            >
-              <Menu className="h-6 w-6" />
-            </button>
-            <div className="flex items-center">
-              <div className="w-6 h-6 bg-primary-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-xs font-bold">A3</span>
-              </div>
-            </div>
-          </div>
+          <p className="font-bold text-gray-900 font-display">AgriSync 360</p>
+          <button
+            onClick={handleLogout}
+            className="p-2 hover:bg-red-50 rounded-lg transition-colors"
+          >
+            <LogOut size={20} className="text-red-600" />
+          </button>
         </header>
 
-        {/* Page content */}
-        <main className="flex-1">
-          <Outlet />
+        {/* Page Content */}
+        <main className="flex-1 min-w-0">
+          {children || <Outlet />}
         </main>
 
         {/* Bottom navigation for mobile */}
         <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30
-                bg-white border-t border-gray-200 shadow-lg
+                bg-white border-t border-green-100 shadow-lg
                 safe-area-inset-bottom">
           <div className="flex items-stretch h-16">
             {navigation.slice(0, 5).map((item) => {
@@ -214,15 +102,15 @@ export default function DashboardLayout() {
                   key={item.name}
                   onClick={() => navigate(item.href)}
                   className={`
-                    flex-1 flex-col items-center justify-center
-                    py-2 px-1 text-xs relative
-                    ${isActive ? 'text-primary-600' : 'text-gray-500'}
-                    hover:bg-gray-50 transition-colors duration-200
+                    flex-1 flex flex-col items-center justify-center
+                    py-2 px-1 text-xs relative transition-colors duration-200
+                    ${isActive ? 'text-green-600 font-semibold' : 'text-gray-500'}
+                    hover:bg-green-50
                   `}
                 >
-                  <item.icon size={22} strokeWidth={isActive ? 2.5 : 1.5} />
-                  <span className="mt-1">{item.label || item.name}</span>
-                  {isActive && <div className="nav-dot" />}
+                  <item.icon size={20} strokeWidth={isActive ? 2.5 : 1.5} />
+                  <span className="mt-1 font-sans text-2xs">{item.label || item.name}</span>
+                  {isActive && <div className="absolute top-1.5 w-1.5 h-1.5 bg-green-600 rounded-full" />}
                 </button>
               );
             })}

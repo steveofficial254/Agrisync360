@@ -18,6 +18,33 @@ export default {
           900: "#14532d",
           950: "#052e16",
         },
+        green: {
+          50: '#F0F9F7',
+          100: '#D4EBE7',
+          200: '#A8D7CE',
+          300: '#7CC3B5',
+          400: '#52B788',
+          500: '#2D6A4F',
+          600: '#1B4332',
+          700: '#081F13',
+        },
+        amber: {
+          50: '#FFFBEB',
+          600: '#D97706',
+        },
+        blue: {
+          50: '#EFF6FF',
+          500: '#3B82F6',
+        },
+        gray: {
+          50: '#F9FAFB',
+          100: '#F3F4F6',
+          200: '#E5E7EB',
+          600: '#4B5563',
+          700: '#374151',
+          800: '#1F2937',
+          900: '#111827',
+        },
         earth: {
           50: "#fdf8f6",
           100: "#f2e8e5",
@@ -68,7 +95,13 @@ export default {
         },
       },
       fontFamily: {
-        display: ['Inter', 'system-ui', 'sans-serif'],
+        display: ['Playfair Display', 'serif'],
+        sans: ['Inter', 'sans-serif'],
+      },
+      backgroundImage: {
+        'gradient-green': 'linear-gradient(135deg, #2D6A4F 0%, #1B4332 100%)',
+        'gradient-green-light': 'linear-gradient(135deg, #40916C 0%, #2D6A4F 100%)',
+        'gradient-green-subtle': 'linear-gradient(135deg, #F0F9F7 0%, #D4EBE7 100%)',
       },
       spacing: {
         '18': '4.5rem',

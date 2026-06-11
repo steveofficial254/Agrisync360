@@ -2,16 +2,16 @@ import React from 'react';
 import { Loader2 } from 'lucide-react';
 
 const buttonVariants = {
-  primary: 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500 active:scale-95 transition-transform',
-  secondary: 'bg-gray-600 text-white hover:bg-gray-700 focus:ring-gray-500 active:scale-95 transition-transform',
-  outline: 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 focus:ring-green-500 active:scale-95 transition-transform',
-  danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 active:scale-95 transition-transform',
-  ghost: 'text-gray-700 hover:bg-gray-100 focus:ring-green-500 active:scale-95 transition-transform',
-  success: 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500 active:scale-95 transition-transform',
-  warning: 'bg-yellow-600 text-white hover:bg-yellow-700 focus:ring-yellow-500 active:scale-95 transition-transform',
-  harvest: 'bg-orange-600 text-white hover:bg-orange-700 focus:ring-orange-500 active:scale-95 transition-transform',
-  earth: 'bg-amber-600 text-white hover:bg-amber-700 focus:ring-amber-500 active:scale-95 transition-transform',
-  gradient: 'bg-gradient-to-r from-green-500 to-green-600 text-white hover:opacity-90 focus:ring-green-500 active:scale-95 transition-transform',
+  primary: 'bg-gradient-green text-white hover:opacity-90 shadow-md hover:shadow-lg focus:ring-green-500 active:scale-95 transition-all duration-200',
+  secondary: 'bg-gray-100 text-gray-900 hover:bg-gray-200 focus:ring-gray-500 active:scale-95 transition-all duration-200',
+  outline: 'border-2 border-green-600 text-green-600 hover:bg-green-50 focus:ring-green-500 active:scale-95 transition-all duration-200',
+  danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500 active:scale-95 transition-all duration-200',
+  ghost: 'text-gray-700 hover:bg-gray-100 focus:ring-green-500 active:scale-95 transition-all duration-200',
+  success: 'bg-gradient-green text-white hover:opacity-90 focus:ring-green-500 active:scale-95 transition-all duration-200',
+  warning: 'bg-yellow-600 text-white hover:bg-yellow-700 focus:ring-yellow-500 active:scale-95 transition-all duration-200',
+  harvest: 'bg-orange-600 text-white hover:bg-orange-700 focus:ring-orange-500 active:scale-95 transition-all duration-200',
+  earth: 'bg-amber-600 text-white hover:bg-amber-700 focus:ring-amber-500 active:scale-95 transition-all duration-200',
+  gradient: 'bg-gradient-green text-white hover:opacity-90 focus:ring-green-500 active:scale-95 transition-all duration-200',
 };
 
 const buttonSizes = {

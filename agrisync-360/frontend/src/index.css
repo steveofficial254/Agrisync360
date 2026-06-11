@@ -20,6 +20,9 @@ body {
   --gradient-harvest: linear-gradient(135deg, #F4A261 0%, #d97706 100%);
   --gradient-earth: linear-gradient(135deg, #8B5E3C 0%, #6b4423 100%);
   --gradient-danger: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  --gradient-green: linear-gradient(135deg, #2D6A4F 0%, #1B4332 100%);
+  --gradient-green-light: linear-gradient(135deg, #40916C 0%, #2D6A4F 100%);
+  --gradient-green-subtle: linear-gradient(135deg, #F0F9F7 0%, #D4EBE7 100%);
 }
 
 /* Utility Classes */
@@ -37,6 +40,21 @@ body {
 
 .bg-gradient-danger {
   background: var(--gradient-danger);
+}
+
+/* Premium Green Gradient Theme */
+.bg-gradient-green {
+  background: var(--gradient-green) !important;
+  color: #ffffff;
+}
+
+.bg-gradient-green-light {
+  background: var(--gradient-green-light) !important;
+  color: #ffffff;
+}
+
+.bg-gradient-green-subtle {
+  background: var(--gradient-green-subtle);
 }
 
 /* Stage Progress Bar */
