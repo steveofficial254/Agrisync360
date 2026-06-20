@@ -147,9 +147,12 @@ export default function PlantingCalendar() {
     setLoading(true)
     try {
       const resp = await farmIntelAPI.listCalendar()
-      setEntries(resp.data.data?.entries || [])
+      // Handle different response structures
+      const entriesData = resp.data?.data?.entries || resp.data?.data || []
+      setEntries(Array.isArray(entriesData) ? entriesData : [])
     } catch (error) {
       console.error('Calendar load error:', error)
+      setEntries([]) // Ensure entries is always an array
     } finally {
       setLoading(false)
     }

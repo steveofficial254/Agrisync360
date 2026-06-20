@@ -1,22 +1,37 @@
 import API from './axios'
+import { apiConfig } from './config'
+import { mockFinancialAPI } from './mockApi'
+
+const api = apiConfig.useMock ? mockFinancialAPI : API
 
 export const financialAPI = {
   // Transactions
-  listTransactions: (params) => API.get('/financial/transactions', { params }),
-  addTransaction: (data) => API.post('/financial/transactions', data),
-  getPLReport: (params) => API.get('/financial/pl-report', { params }),
-  getDashboard: () => API.get('/financial/dashboard'),
+  listTransactions: (params) =>
+    apiConfig.useMock ? api.listTransactions(params) : API.get('/financial/transactions', { params }),
+  addTransaction: (data) =>
+    apiConfig.useMock ? api.createTransaction(data) : API.post('/financial/transactions', data),
+  getPLReport: (params) =>
+    apiConfig.useMock ? Promise.resolve({ data: { data: { income: 0, expenses: 0, profit: 0 } } }) : API.get('/financial/pl-report', { params }),
+  getDashboard: () =>
+    apiConfig.useMock ? api.getDashboard() : API.get('/financial/dashboard'),
 
   // Loans
-  listLoans: () => API.get('/financial/loans'),
-  addLoan: (data) => API.post('/financial/loans', data),
-  addLoanRepayment: (id, data) => API.post(`/financial/loans/${id}/repayment`, data),
+  listLoans: () =>
+    apiConfig.useMock ? api.listLoans() : API.get('/financial/loans'),
+  addLoan: (data) =>
+    apiConfig.useMock ? api.createLoan(data) : API.post('/financial/loans', data),
+  addLoanRepayment: (id, data) =>
+    apiConfig.useMock ? Promise.resolve({ data: { success: true } }) : API.post(`/financial/loans/${id}/repayment`, data),
 
   // Insurance
-  listInsurance: () => API.get('/financial/insurance'),
-  addInsurance: (data) => API.post('/financial/insurance', data),
+  listInsurance: () =>
+    apiConfig.useMock ? api.listInsurance() : API.get('/financial/insurance'),
+  addInsurance: (data) =>
+    apiConfig.useMock ? api.createInsurance(data) : API.post('/financial/insurance', data),
 
   // Budget
-  listBudgets: () => API.get('/financial/budgets'),
-  addBudget: (data) => API.post('/financial/budgets', data),
+  listBudgets: () =>
+    apiConfig.useMock ? api.listBudgets() : API.get('/financial/budgets'),
+  addBudget: (data) =>
+    apiConfig.useMock ? api.createBudget(data) : API.post('/financial/budgets', data),
 }

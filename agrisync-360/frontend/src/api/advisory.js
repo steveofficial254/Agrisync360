@@ -1,40 +1,58 @@
 import API from './axios'
+import { apiConfig } from './config'
+import { mockAdvisoryAPI } from './mockApi'
+
+const api = apiConfig.useMock ? mockAdvisoryAPI : API
 
 export const advisoryAPI = {
   getCropAdvisory: (cropName, params) =>
-    API.get(`/advisory/crop/${cropName}`, { params }),
+    apiConfig.useMock 
+      ? api.getAll({ crop: cropName, ...params })
+      : API.get(`/advisory/crop/${cropName}`, { params }),
 
   getPlantingCalendar: (cropName, params) =>
-    API.get(`/advisory/calendar/${cropName}`, { params }),
+    apiConfig.useMock 
+      ? api.getCalendar(cropName)
+      : API.get(`/advisory/calendar/${cropName}`, { params }),
 
   getMyCropsAdvisory: () =>
-    API.get('/advisory/my-crops'),
+    apiConfig.useMock ? api.getMyCropsAdvisory() : API.get('/advisory/my-crops'),
 
   getNutritionAdvisory: (cropName, params) =>
-    API.get(`/advisory/nutrition/${cropName}`, { params }),
+    apiConfig.useMock 
+      ? api.getAll({ crop: cropName, type: 'nutrition', ...params })
+      : API.get(`/advisory/nutrition/${cropName}`, { params }),
 
   getNutrition: (cropName, params) =>
-    API.get(`/advisory/nutrition/${cropName}`, { params }),
+    apiConfig.useMock 
+      ? api.getAll({ crop: cropName, type: 'nutrition', ...params })
+      : API.get(`/advisory/nutrition/${cropName}`, { params }),
 
   getPestAdvisory: (cropName, params) =>
-    API.get(`/advisory/pests/${cropName}`, { params }),
+    apiConfig.useMock 
+      ? api.getAll({ crop: cropName, type: 'pest', ...params })
+      : API.get(`/advisory/pests/${cropName}`, { params }),
 
   getPests: (cropName, params) =>
-    API.get(`/advisory/pests/${cropName}`, { params }),
+    apiConfig.useMock 
+      ? api.getAll({ crop: cropName, type: 'pest', ...params })
+      : API.get(`/advisory/pests/${cropName}`, { params }),
 
   getHarvestAdvisory: (cropName, params) =>
-    API.get(`/advisory/crop/${cropName}`, { 
-      params: { ...params, advisory_type: 'harvest' } 
-    }),
+    apiConfig.useMock 
+      ? api.getAll({ crop: cropName, type: 'harvest', ...params })
+      : API.get(`/advisory/crop/${cropName}`, { params: { ...params, advisory_type: 'harvest' } }),
 
   getHarvest: (cropName, params) =>
-    API.get(`/advisory/crop/${cropName}`, { 
-      params: { ...params, advisory_type: 'harvest' } 
-    }),
+    apiConfig.useMock 
+      ? api.getAll({ crop: cropName, type: 'harvest', ...params })
+      : API.get(`/advisory/crop/${cropName}`, { params: { ...params, advisory_type: 'harvest' } }),
 
   getCalendar: (cropName, params) =>
-    API.get(`/advisory/calendar/${cropName}`, { params }),
+    apiConfig.useMock 
+      ? api.getCalendar(cropName)
+      : API.get(`/advisory/calendar/${cropName}`, { params }),
 
   getAll: (params) =>
-    API.get('/advisory/', { params }),
+    apiConfig.useMock ? api.getAll(params) : API.get('/advisory/', { params }),
 }

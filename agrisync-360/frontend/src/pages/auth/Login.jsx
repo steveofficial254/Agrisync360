@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { 
-  User, 
-  Lock, 
-  Eye, 
+import {
+  User,
+  Lock,
+  Eye,
   EyeOff,
   Sprout,
   Smartphone,
@@ -16,7 +16,7 @@ import Card from '../../components/common/Card';
 import Input from '../../components/common/Input';
 import Alert from '../../components/common/Alert';
 import { useAuth } from '../../context/AuthContext';
-import API from '../../api/axios';
+import { authAPI } from '../../api/auth';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -31,6 +31,7 @@ export default function Login() {
   const [formData, setFormData] = useState({
     password: '',
     phone: '',
+    email: '',
     rememberMe: false
   });
 
@@ -43,60 +44,76 @@ export default function Login() {
 
   const validateForm = () => {
     setError('');
-    
-    if (!formData.phone.trim()) {
-      setError('Phone number is required');
-      return false;
+
+    if (loginMethod === 'phone') {
+      if (!formData.phone.trim()) {
+        setError('Phone number is required');
+        return false;
+      }
+      if (!/^(07|01)\d{8}$/.test(formData.phone.replace(/\s/g, ''))) {
+        setError('Please enter a valid Kenyan phone number');
+        return false;
+      }
+    } else {
+      if (!formData.email.trim()) {
+        setError('Email is required');
+        return false;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+        setError('Please enter a valid email address');
+        return false;
+      }
     }
-    if (!/^(07|01)\d{8}$/.test(formData.phone.replace(/\s/g, ''))) {
-      setError('Please enter a valid Kenyan phone number');
-      return false;
-    }
-    
+
     if (!formData.password) {
       setError('Password is required');
       return false;
     }
-    
+
     return true;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
-    
+
     setIsLoading(true);
     setError('');
-    
+
     try {
-      // Use the configured API instance (goes through proxy)
-      const response = await API.post('/auth/login', {
-        phone: formData.phone,
+      // Use authAPI which handles mock/real API switching
+      const payload = {
         password: formData.password
-      });
-      
-      const data = response.data;
-      
-      if (data.success) {
-        const { access_token, refresh_token, user } = data.data;
-        
-        // Validate we got a token
-        if (!access_token) {
-          throw new Error('No access token received');
-        }
+      };
 
-        // Save auth state using the new login function
-        login(user, access_token, refresh_token);
-
-        setSuccess('Login successful! Redirecting to dashboard...');
-        setTimeout(() => {
-          const userRole = user?.role || 'farmer';
-          navigate(getDashboardPath(userRole));
-        }, 1500);
+      if (loginMethod === 'phone') {
+        payload.phone = formData.phone;
       } else {
-        throw new Error(data.message || 'Login failed');
+        payload.email = formData.email;
       }
+
+      const response = await authAPI.login(payload);
+
+      const data = response.data;
+
+      // Handle both success: true format and direct data format
+      const responseData = data.success ? data.data : data;
+      const { access_token, refresh_token, user } = responseData;
+
+      // Validate we got a token
+      if (!access_token) {
+        throw new Error('No access token received');
+      }
+
+      // Save auth state using the new login function
+      login(user, access_token, refresh_token);
+
+      setSuccess('Login successful! Redirecting to dashboard...');
+      setTimeout(() => {
+        const userRole = user?.role || 'farmer';
+        navigate(getDashboardPath(userRole));
+      }, 1500);
     } catch (err) {
       const msg = err?.message || 'Invalid phone or password';
       setError(msg);
@@ -148,16 +165,28 @@ export default function Login() {
 
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
-            <Input
-              label="Phone Number"
-              placeholder="07XX XXX XXX"
-              value={formData.phone}
-              onChange={(e) => handleInputChange('phone', e.target.value)}
-              leftIcon="phone"
-              required
-              hint="Format: 07XX XXX XXX"
-            />
-            
+            {loginMethod === 'phone' ? (
+              <Input
+                label="Phone Number"
+                placeholder="07XX XXX XXX"
+                value={formData.phone}
+                onChange={(e) => handleInputChange('phone', e.target.value)}
+                leftIcon="phone"
+                required
+                hint="Format: 07XX XXX XXX (Use 0777000001 for admin, 0777000002 for dealer, 0777000003 for NGO)"
+              />
+            ) : (
+              <Input
+                label="Email Address"
+                placeholder="your@email.com"
+                value={formData.email}
+                onChange={(e) => handleInputChange('email', e.target.value)}
+                leftIcon="email"
+                required
+                hint="Use admin@agrisync.com for admin, dealer@agrisync.com for dealer, ngo@agrisync.com for NGO"
+              />
+            )}
+
             <Input
               label="Password"
               type={showPassword ? 'text' : 'password'}
@@ -244,15 +273,19 @@ export default function Login() {
           <div className="grid grid-cols-2 gap-4 mt-6">
             <Button
               variant="outline"
-              className="w-full bg-green-50 hover:bg-green-100 text-green-600 border-green-200 hover:border-green-300"
+              className={`w-full ${loginMethod === 'phone' ? 'bg-green-100 text-green-700 border-green-300' : 'bg-green-50 hover:bg-green-100 text-green-600 border-green-200 hover:border-green-300'}`}
               leftIcon={<Smartphone className="w-4 h-4" />}
+              onClick={() => setLoginMethod('phone')}
+              type="button"
             >
-              USSD Login
+              Phone Login
             </Button>
             <Button
               variant="outline"
-              className="w-full bg-green-50 hover:bg-green-100 text-green-600 border-green-200 hover:border-green-300"
+              className={`w-full ${loginMethod === 'email' ? 'bg-green-100 text-green-700 border-green-300' : 'bg-green-50 hover:bg-green-100 text-green-600 border-green-200 hover:border-green-300'}`}
               leftIcon={<Mail className="w-4 h-4" />}
+              onClick={() => setLoginMethod('email')}
+              type="button"
             >
               Email Login
             </Button>
