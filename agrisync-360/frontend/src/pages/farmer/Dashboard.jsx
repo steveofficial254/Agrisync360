@@ -25,6 +25,7 @@ import { advisoryAPI } from '../../api/advisory'
 import { paymentsAPI } from '../../api/payments'
 import { farmersAPI } from '../../api/farmers'
 import { financialAPI } from '../../api/financial'
+import CommunityWidget from '../../components/community/CommunityWidget'
 
 const QuickActionButton = ({ icon: Icon, label, description, onClick }) => (
   <button
@@ -753,6 +754,26 @@ export default function Dashboard() {
               ))}
             </div>
           )}
+        </div>
+
+        {/* Community Widget */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          <div className="lg:col-span-2">
+            <CommunityWidget />
+          </div>
+          <div className="lg:col-span-1 bg-gradient-to-br from-green-600 to-green-800 rounded-2xl p-5 text-white shadow-lg flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">🌱</span>
+              <div>
+                <p className="font-bold text-sm">Grow Together</p>
+                <p className="text-green-200 text-xs">Connect with fellow farmers</p>
+              </div>
+            </div>
+            <p className="text-xs text-green-100 leading-relaxed">Share tips, ask questions, and trade insights with a network of farmers, agro-dealers, and NGO partners across Kenya.</p>
+            <button onClick={() => navigate('/farmer/community')} className="w-full py-2 bg-white text-green-700 text-xs font-bold rounded-xl hover:bg-green-50 transition-colors">
+              Join the Conversation
+            </button>
+          </div>
         </div>
 
         {/* Quick Actions Grid */}

@@ -29,6 +29,7 @@ import Subscription from "./pages/farmer/Subscription";
 import FarmSetup from "./pages/farmer/FarmSetup";
 import AIAssistant from "./pages/farmer/AIAssistant";
 import Community from "./pages/farmer/Community";
+import CommunityMessaging from "./pages/farmer/CommunityMessaging";
 import YieldTracker from "./pages/farmer/YieldTracker";
 import Greenhouse from "./pages/farmer/Greenhouse";
 import FarmOperations from "./pages/farmer/FarmOperations";
@@ -204,7 +205,7 @@ function AppRoutes() {
         <Route path="subscription" element={<Subscription />} />
         <Route path="farm-setup" element={<FarmSetup />} />
         <Route path="ai-chat" element={<AIAssistant />} />
-        <Route path="community" element={<Community />} />
+        <Route path="community" element={<CommunityMessaging />} />
         <Route path="yield-tracker" element={<YieldTracker />} />
         <Route path="greenhouse" element={<Greenhouse />} />
         <Route path="farm-ops" element={<FarmOperations />} />
