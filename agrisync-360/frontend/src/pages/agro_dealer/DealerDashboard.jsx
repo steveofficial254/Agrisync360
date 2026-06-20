@@ -55,9 +55,14 @@ export default function DealerDashboard() {
         dealerAPI.getFarmers()
       ]);
 
-      setStats(statsResp.data);
-      setProducts(productsResp.data);
-      setFarmers(farmersResp.data);
+      // Handle both mock API format (success: true, data: {}) and direct format
+      const statsData = statsResp.data?.success ? statsResp.data.data : statsResp.data;
+      const productsData = productsResp.data?.success ? productsResp.data.data : productsResp.data;
+      const farmersData = farmersResp.data?.success ? farmersResp.data.data : farmersResp.data;
+
+      setStats(statsData || {});
+      setProducts(Array.isArray(productsData) ? productsData : []);
+      setFarmers(Array.isArray(farmersData) ? farmersData : []);
     } catch (err) {
       setError('Failed to load dashboard data');
       console.error('Dealer dashboard error:', err);
@@ -183,8 +188,8 @@ export default function DealerDashboard() {
     }
   };
 
-  const StatCard = ({ title, value, icon, color }) => (
-    <Card>
+  const StatCard = ({ title, value, icon, color, className }) => (
+    <Card className={className}>
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm text-gray-500">{title}</p>
@@ -202,20 +207,26 @@ export default function DealerDashboard() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Agro-Dealer Dashboard</h1>
-          <p className="text-gray-600 mt-1">Manage products and connect with farmers</p>
+    <div className="p-4 md:p-6 lg:p-8 space-y-8 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+      {/* Header */}
+      <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+              Agro-Dealer Dashboard
+            </h1>
+            <p className="text-gray-600 mt-2 text-lg">Manage products and connect with farmers</p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={loadDashboardData}
+            isLoading={loading}
+            className="shadow-md hover:shadow-lg transition-all duration-200"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
+          </Button>
         </div>
-        <Button
-          variant="outline"
-          onClick={loadDashboardData}
-          isLoading={loading}
-        >
-          <RefreshCw className="w-4 h-4 mr-2" />
-          Refresh
-        </Button>
       </div>
 
       {/* Error Alert */}
@@ -224,87 +235,92 @@ export default function DealerDashboard() {
       )}
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
-          title="Farmers in County"
-          value={stats?.farmers?.in_county?.toLocaleString() || '0'}
-          icon={<Users className="w-6 h-6 text-blue-600" />}
-          color="bg-blue-100"
+          title="Connected Farmers"
+          value={stats?.connected_farmers?.toLocaleString() || '0'}
+          icon={<Users className="w-7 h-7 text-blue-600" />}
+          color="bg-gradient-to-br from-blue-50 to-blue-100"
+          className="shadow-lg hover:shadow-xl transition-all duration-200 border border-blue-200"
         />
         <StatCard
-          title="Products Listed"
-          value={stats?.products?.listed || '0'}
-          icon={<Package className="w-6 h-6 text-green-600" />}
-          color="bg-green-100"
+          title="Total Products"
+          value={stats?.total_products?.toLocaleString() || '0'}
+          icon={<Package className="w-7 h-7 text-green-600" />}
+          color="bg-gradient-to-br from-green-50 to-green-100"
+          className="shadow-lg hover:shadow-xl transition-all duration-200 border border-green-200"
         />
         <StatCard
-          title="Broadcasts Sent"
-          value={stats?.broadcasts?.sent || '0'}
-          icon={<Send className="w-6 h-6 text-purple-600" />}
-          color="bg-purple-100"
+          title="Pending Orders"
+          value={stats?.pending_orders?.toLocaleString() || '0'}
+          icon={<Send className="w-7 h-6 text-purple-600" />}
+          color="bg-gradient-to-br from-purple-50 to-purple-100"
+          className="shadow-lg hover:shadow-xl transition-all duration-200 border border-purple-200"
         />
         <StatCard
-          title="This Month"
-          value={stats?.broadcasts?.this_month || '0'}
-          icon={<TrendingUp className="w-6 h-6 text-orange-600" />}
-          color="bg-orange-100"
+          title="Monthly Revenue"
+          value={`KSH ${(stats?.revenue_this_month / 1000).toFixed(0)}K`}
+          icon={<TrendingUp className="w-7 h-6 text-orange-600" />}
+          color="bg-gradient-to-br from-orange-50 to-orange-100"
+          className="shadow-lg hover:shadow-xl transition-all duration-200 border border-orange-200"
         />
       </div>
 
       {/* Product Management */}
-      <Card>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Product Management</h2>
-          <Button onClick={() => openProductModal()}>
+      <Card className="shadow-xl border border-gray-200">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold text-gray-900">Product Management</h2>
+          <Button
+            onClick={() => openProductModal()}
+            className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-md hover:shadow-lg transition-all duration-200"
+          >
             <Plus className="w-4 h-4 mr-2" />
             Add Product
           </Button>
         </div>
-        
-        <div className="space-y-4">
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {products.map((product) => (
-            <Card key={product.id} className="border border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-earth-100 rounded-lg flex items-center justify-center">
-                      <Package className="w-6 h-6 text-earth-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900">{product.name}</h3>
-                      <p className="text-sm text-gray-500 capitalize">{product.type} • {product.crop}</p>
-                      <p className="text-xs text-gray-400">{product.description}</p>
-                    </div>
+            <Card key={product.id} className="border border-gray-200 hover:border-emerald-300 hover:shadow-xl transition-all duration-300">
+              <div className="p-5">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="w-14 h-14 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl flex items-center justify-center shadow-md">
+                    <Package className="w-7 h-7 text-emerald-600" />
                   </div>
-                  <div className="text-right">
-                    <p className="text-lg font-bold text-primary-700">
-                      KSH {product.price_ksh}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1">
-                      {product.available ? (
-                        <Badge variant="success">Available</Badge>
-                      ) : (
-                        <Badge variant="warning">Out of Stock</Badge>
-                      )}
-                    </div>
-                  </div>
+                  {product.available ? (
+                    <Badge variant="success" className="bg-emerald-100 text-emerald-800 border border-emerald-200">In Stock</Badge>
+                  ) : (
+                    <Badge variant="warning" className="bg-orange-100 text-orange-800 border border-orange-200">Out of Stock</Badge>
+                  )}
                 </div>
-                <div className="flex items-center gap-2 mt-3">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openProductModal(product)}
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDeleteProduct(product.id)}
-                    className="text-red-600 border-red-300 hover:bg-red-50"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                <h3 className="font-bold text-gray-900 text-lg mb-2">{product.name}</h3>
+                <p className="text-sm text-gray-600 capitalize mb-1">{product.category || product.type}</p>
+                <p className="text-xs text-gray-500 mb-4">{product.description || 'Quality agricultural product'}</p>
+                <div className="flex items-center justify-between pt-4 border-t border-gray-100">
+                  <div>
+                    <p className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                      KSH {product.price?.toLocaleString() || product.price_ksh?.toLocaleString()}
+                    </p>
+                    <p className="text-xs text-gray-500">per unit</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openProductModal(product)}
+                      className="hover:bg-emerald-50 hover:border-emerald-300 transition-colors"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteProduct(product.id)}
+                      className="hover:bg-red-50 hover:border-red-300 hover:text-red-600 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             </Card>
@@ -313,19 +329,19 @@ export default function DealerDashboard() {
       </Card>
 
       {/* Farmer Directory */}
-      <Card>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Farmer Directory</h2>
-          <div className="flex items-center gap-2">
+      <Card className="shadow-xl border border-gray-200">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold text-gray-900">Farmer Directory</h2>
+          <div className="flex items-center gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search farmers..."
-                className="pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 shadow-sm"
               />
             </div>
-            <select className="px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500">
+            <select className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500 shadow-sm">
               <option value="all">All Crops</option>
               <option value="maize">Maize</option>
               <option value="beans">Beans</option>
@@ -335,40 +351,51 @@ export default function DealerDashboard() {
           </div>
         </div>
 
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {farmers.map((farmer) => (
-            <div key={farmer.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-              <div>
-                <p className="font-medium text-gray-900">{farmer.name}</p>
-                <p className="text-sm text-gray-500">{farmer.phone} • {farmer.county}</p>
-                <p className="text-xs text-gray-400">
-                  {farmer.farms_count} farm{farmer.farms_count !== 1 ? 's' : ''}
-                </p>
+            <Card key={farmer.id} className="border border-gray-200 hover:border-emerald-300 hover:shadow-lg transition-all duration-300">
+              <div className="p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-full flex items-center justify-center">
+                    <Users className="w-5 h-5 text-emerald-600" />
+                  </div>
+                  <Badge variant="success" className="bg-emerald-100 text-emerald-800 border border-emerald-200">Active</Badge>
+                </div>
+                <h3 className="font-bold text-gray-900 mb-1">{farmer.name}</h3>
+                <p className="text-sm text-gray-600 mb-1">{farmer.phone}</p>
+                <p className="text-xs text-gray-500 mb-3">{farmer.county}</p>
+                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                  <span className="text-xs text-gray-500">Connected: {farmer.connected_date || 'Recently'}</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="hover:bg-emerald-50 hover:border-emerald-300 transition-colors"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
-              <div className="text-right">
-                {getSubscriptionBadge(farmer.subscription)}
-                <p className="text-xs text-gray-500 mt-1">
-                  {farmer.last_active ? format(new Date(farmer.last_active), 'MMM d') : 'Never'}
-                </p>
-              </div>
-            </div>
+            </Card>
           ))}
         </div>
       </Card>
 
       {/* Send Broadcast */}
-      <Card>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Send Broadcast</h2>
-          <Button onClick={() => setShowBroadcastModal(true)}>
+      <Card className="shadow-xl border border-gray-200">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold text-gray-900">Send Broadcast</h2>
+          <Button
+            onClick={() => setShowBroadcastModal(true)}
+            className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-md hover:shadow-lg transition-all duration-200"
+          >
             <Send className="w-4 h-4 mr-2" />
             New Broadcast
           </Button>
         </div>
 
-        <div className="space-y-3">
-          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p className="text-yellow-800 text-sm">
+        <div className="space-y-4">
+          <div className="p-4 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl">
+            <p className="text-emerald-800 text-sm font-medium">
               Recent broadcasts reach an average of {Math.round(farmers.length * 0.7)} farmers
             </p>
           </div>

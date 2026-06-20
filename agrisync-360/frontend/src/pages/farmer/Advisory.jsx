@@ -263,12 +263,19 @@ export default function Advisory() {
         planting_date: crop.planting_date
       });
 
+      // Ensure calendar data is always an array
+      const calendarData = calendarResp.data?.data;
       setPlantingCalendars(prev => ({
         ...prev,
-        [crop.id]: calendarResp.data?.data || []
+        [crop.id]: Array.isArray(calendarData) ? calendarData : []
       }));
     } catch (err) {
       console.error(`Failed to load calendar for ${crop.crop_type}:`, err);
+      // Set empty array on error to prevent crashes
+      setPlantingCalendars(prev => ({
+        ...prev,
+        [crop.id]: []
+      }));
     }
   };
 
@@ -307,7 +314,7 @@ export default function Advisory() {
   };
 
   const PlantingCalendar = ({ calendar, plantingDate }) => {
-    if (!calendar || calendar.length === 0) return null;
+    if (!calendar || !Array.isArray(calendar) || calendar.length === 0) return null;
 
     const currentWeek = Math.floor(differenceInDays(new Date(), new Date(plantingDate)) / 7);
 
@@ -422,7 +429,7 @@ export default function Advisory() {
             myCrops.map(crop => {
               const { progress, stage } = getGrowthProgress(crop);
               const cropAdvisories = advisories[crop.id] || {};
-              const calendar = plantingCalendars[crop.id];
+              const calendar = Array.isArray(plantingCalendars[crop.id]) ? plantingCalendars[crop.id] : [];
               const isExpanded = expandedCrop === crop.id;
 
               return (

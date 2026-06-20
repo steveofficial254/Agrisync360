@@ -19,9 +19,9 @@ const kenyanCounties = [
   'Lamu', 'Garissa', 'Wajir', 'Mandera', 'Marsabit',
   'Isiolo', 'Samburu', 'Turkana', 'West Pokot', 'Baringo',
   'Koibatek', 'Nandi', 'Uasin Gishu', 'Elgeyo Marakwet',
-  'Bomet', 'Narok', 'Kajiado', 'Taita Taveta', 'Kwale',
+  'Bomet', 'Narok', 'Kajiado', 'Taita Taveta',
   'Makueni', 'Machakos', 'Kitui', 'Embu', 'Tharaka Nithi',
-  'Kirinyaga', 'Muranga', 'Nyandarua', 'Laikipia', 'Samburu'
+  'Kirinyaga', 'Muranga', 'Nyandarua', 'Laikipia'
 ];
 
 import { adminAPI } from '../../api/admin';
@@ -64,8 +64,10 @@ export default function FarmerManagement() {
       };
 
       const resp = await adminAPI.getFarmers(params);
-      setFarmers(resp.data.data);
-      setPagination(resp.data.pagination);
+      // Handle both mock API format (success: true, data: {}) and direct format
+      const responseData = resp.data?.success ? resp.data.data : resp.data;
+      setFarmers(responseData?.farmers || responseData?.data || []);
+      setPagination(responseData?.pagination || null);
     } catch (err) {
       setError('Failed to load farmers');
       console.error('Farmer management error:', err);

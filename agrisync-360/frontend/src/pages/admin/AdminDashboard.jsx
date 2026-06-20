@@ -24,9 +24,9 @@ const kenyanCounties = [
   'Lamu', 'Garissa', 'Wajir', 'Mandera', 'Marsabit',
   'Isiolo', 'Samburu', 'Turkana', 'West Pokot', 'Baringo',
   'Koibatek', 'Nandi', 'Uasin Gishu', 'Elgeyo Marakwet',
-  'Bomet', 'Narok', 'Kajiado', 'Taita Taveta', 'Kwale',
+  'Bomet', 'Narok', 'Kajiado', 'Taita Taveta',
   'Makueni', 'Machakos', 'Kitui', 'Embu', 'Tharaka Nithi',
-  'Kirinyaga', 'Muranga', 'Nyandarua', 'Laikipia', 'Samburu'
+  'Kirinyaga', 'Muranga', 'Nyandarua', 'Laikipia'
 ];
 
 import { adminAPI } from '../../api/admin';
@@ -75,12 +75,21 @@ export default function AdminDashboard() {
         adminAPI.getSystemHealth()
       ]);
 
-      setStats(statsResp.data || {});
-      setRevenueData(revenueResp.data || {});
-      setTopCounties(Array.isArray(countiesResp.data) ? countiesResp.data : []);
-      setTopCrops(Array.isArray(cropsResp.data) ? cropsResp.data : []);
-      setRecentFarmers(Array.isArray(farmersResp.data) ? farmersResp.data : []);
-      setSystemHealth(healthResp.data || {});
+      // Handle both mock API format (success: true, data: {}) and direct format
+      const statsData = statsResp.data?.success ? statsResp.data.data : statsResp.data;
+      const revenueData = revenueResp.data?.success ? revenueResp.data.data : revenueResp.data;
+      const countiesData = countiesResp.data?.success ? countiesResp.data.data : countiesResp.data;
+      const cropsData = cropsResp.data?.success ? cropsResp.data.data : cropsResp.data;
+      const farmersData = farmersResp.data?.success ? farmersResp.data.data : farmersResp.data;
+      const healthData = healthResp.data?.success ? healthResp.data.data : healthResp.data;
+
+      setStats(statsData || {});
+      // Extract monthly array from revenue data if it exists
+      setRevenueData(Array.isArray(revenueData) ? revenueData : (revenueData?.monthly || []));
+      setTopCounties(Array.isArray(countiesData) ? countiesData : []);
+      setTopCrops(Array.isArray(cropsData) ? cropsData : []);
+      setRecentFarmers(Array.isArray(farmersData) ? farmersData : []);
+      setSystemHealth(healthData || {});
     } catch (err) {
       setError('Failed to load dashboard data');
       console.error('Admin dashboard error:', err);
@@ -260,11 +269,13 @@ export default function AdminDashboard() {
                     <span className="w-8 h-8 bg-earth-100 rounded-full flex items-center justify-center text-xs font-medium">
                       {index + 1}
                     </span>
-                    <span className="font-medium text-gray-900 capitalize">{crop.crop}</span>
+                    <span className="font-medium text-gray-900 capitalize">{crop.crop || crop.name || 'Unknown'}</span>
                   </div>
                   <div className="text-right">
-                    <p className="font-semibold text-gray-900">{crop.count.toLocaleString()}</p>
-                    <p className="text-xs text-gray-500">{crop.percentage}%</p>
+                    <p className="font-semibold text-gray-900">
+                      {(crop.count || crop.farmers || 0).toLocaleString()}
+                    </p>
+                    <p className="text-xs text-gray-500">{crop.percentage || crop.percentage || 0}%</p>
                   </div>
                 </div>
               ))}
